@@ -7,7 +7,7 @@ export interface Vec3 {
   z: number;
 }
 
-// typy bloků – později sem přidáme konkrétní Mekanism stroje
+// typy bloků – později sem přidám konkrétní Mekanism stroje
 export type BlockType =
   | "basic_block"   // testovací univerzální blok
   | "generator_basic"
@@ -17,7 +17,7 @@ export type BlockType =
 export interface BlockInstance {
   id: string;          // unikátní ID (třeba "block-1")
   type: BlockType;
-  position: Vec3;      // pozice ve světě (v “kostičkách”)
+  position: Vec3;      // pozice v prostoru (v “kostičkách”)
   rotationY: 0 | 90 | 180 | 270; // rotace kolem Y, jako v MC
 }
 
