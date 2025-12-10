@@ -3,10 +3,16 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { BLOCK_DEFINITIONS } from "../models/blocks";
 import type { BlockInstance } from "../models/blocks";
 
+export interface SceneAPI {
+  cleanup: () => void;
+  addBlock: (block: BlockInstance) => void;
+  removeBlock: (id: string) => void;
+}
+
 export default function initScene(
   mountEl: HTMLDivElement,
   initialBlocks: BlockInstance[]
-) {
+): SceneAPI {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x111111);
 
@@ -40,9 +46,10 @@ export default function initScene(
   grid.position.y = -0.5;
   scene.add(grid);
 
-  // společná geometrie pro všechny bloky
+  // společná geometrie pro všechny bloky (kostka 1×1×1)
   const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
 
+  // mapování id -> mesh
   const blockMeshes = new Map<string, THREE.Mesh>();
 
   const createBlockMesh = (instance: BlockInstance) => {
@@ -58,7 +65,7 @@ export default function initScene(
 
     mesh.position.set(
       instance.position.x,
-      instance.position.y + 0.5,
+      instance.position.y + 0.5, // ať sedí na gridu
       instance.position.z
     );
 
@@ -90,19 +97,55 @@ export default function initScene(
 
   animate();
 
-  return () => {
-    cancelAnimationFrame(frameId);
-    window.removeEventListener("resize", handleResize);
-    mountEl.removeChild(renderer.domElement);
+  // === API, které vracíme Reactu ===
+  const api: SceneAPI = {
+    cleanup: () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", handleResize);
+      mountEl.removeChild(renderer.domElement);
 
-    renderer.dispose();
-    blockGeometry.dispose();
-    blockMeshes.forEach((mesh) => {
+      renderer.dispose();
+      blockGeometry.dispose();
+
+      blockMeshes.forEach((mesh) => {
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach((m) => m.dispose());
+        } else {
+          mesh.material.dispose();
+        }
+      });
+      blockMeshes.clear();
+    },
+
+    addBlock: (instance: BlockInstance) => {
+      // kdyby náhodou blok se stejným id už existoval, nejdřív ho smažeme
+      const existing = blockMeshes.get(instance.id);
+      if (existing) {
+        scene.remove(existing);
+        if (Array.isArray(existing.material)) {
+          existing.material.forEach((m) => m.dispose());
+        } else {
+          existing.material.dispose();
+        }
+        blockMeshes.delete(instance.id);
+      }
+
+      createBlockMesh(instance);
+    },
+
+    removeBlock: (id: string) => {
+      const mesh = blockMeshes.get(id);
+      if (!mesh) return;
+
+      scene.remove(mesh);
       if (Array.isArray(mesh.material)) {
         mesh.material.forEach((m) => m.dispose());
       } else {
         mesh.material.dispose();
       }
-    });
+      blockMeshes.delete(id);
+    },
   };
+
+  return api;
 }
