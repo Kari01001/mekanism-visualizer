@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import initScene, { type SceneAPI } from "./three/initScene";
 import type { BlockInstance, BlockType } from "./models/blocks";
 import { useBlocksStore } from "./state/useBlocksStore";
+import BlockList from "./components/BlockList";
 
 const initialBlocks: BlockInstance[] = [
   {
@@ -37,6 +38,8 @@ const App = () => {
   const blocks = useBlocksStore((s) => s.blocks);
   const addBlockToStore = useBlocksStore((s) => s.addBlock);
   const clearBlocks = useBlocksStore((s) => s.clearBlocks);
+  const selectedBlockId = useBlocksStore((s) => s.selectedBlockId);
+
 
   // UI state pro formulář
   const [selectedType, setSelectedType] = useState<BlockType>("basic_block");
@@ -91,6 +94,12 @@ const App = () => {
       }
     });
   }, [blocks]);
+
+  // 4️⃣ synchronizace výběru (store → 3D scéna)
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    sceneRef.current.setSelectedBlock(selectedBlockId);
+  }, [selectedBlockId]);
 
   // handler pro tlačítko "Add block"
   const handleAddBlock = () => {
@@ -199,6 +208,10 @@ const App = () => {
         >
           Add block
         </button>
+        <hr style={{ borderColor: "#333", margin: "12px 0" }} />
+
+        <BlockList mode={mode} />
+
       </div>
 
       <div className="canvas-container" ref={mountRef} />
