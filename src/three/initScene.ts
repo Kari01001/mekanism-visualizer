@@ -1,17 +1,22 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { BLOCK_DEFINITIONS } from "../models/blocks";
-import type { BlockInstance } from "../models/blocks";
+import type { BlockInstance, BlockType } from "../models/blocks";
+
 
 export interface SceneAPI {
   cleanup: () => void;
   addBlock: (block: BlockInstance) => void;
   removeBlock: (id: string) => void;
+  setSelectedBlock: (id: string | null) => void;
 }
 
+
 export default function initScene(
+  
   mountEl: HTMLDivElement,
-  initialBlocks: BlockInstance[]
+  initialBlocks: BlockInstance[],
+  onSelectBlock?: (id: string | null) => void
 ): SceneAPI {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x111111);
@@ -48,18 +53,42 @@ export default function initScene(
 
   // společná geometrie pro všechny bloky (kostka 1×1×1)
   const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
+  const materialCache = new Map<BlockType, THREE.MeshStandardMaterial>();
+
+  const highlightMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0x4444ff,
+    emissiveIntensity: 0.6,
+  });
+  const hoverMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0x00ffff,
+    emissiveIntensity: 0.35,
+  });
+
+
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
 
   // mapování id -> mesh
   const blockMeshes = new Map<string, THREE.Mesh>();
+  let selectedBlockId: string | null = null;
 
   const createBlockMesh = (instance: BlockInstance) => {
     const def = BLOCK_DEFINITIONS[instance.type];
 
-    const material = new THREE.MeshStandardMaterial({
+    let material = materialCache.get(instance.type);
+    
+    if (!material) {
+      material = new THREE.MeshStandardMaterial({
       color: def.color,
       metalness: 0.1,
       roughness: 0.8,
-    });
+      });
+
+      materialCache.set(instance.type, material);
+    }
+
 
     const mesh = new THREE.Mesh(blockGeometry, material);
 
@@ -68,6 +97,8 @@ export default function initScene(
       instance.position.y + 0.5, // ať sedí na gridu
       instance.position.z
     );
+    mesh.userData.blockId = instance.id;
+    mesh.userData.type = instance.type;
 
     mesh.rotation.y = (instance.rotationY * Math.PI) / 180;
 
@@ -94,12 +125,76 @@ export default function initScene(
     controls.update();
     renderer.render(scene, camera);
   };
+  let hoveredBlockId: string | null = null;
+
+  const handlePointerDown = (event: PointerEvent) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects(
+      Array.from(blockMeshes.values()),
+      false
+    );
+
+    if (intersects.length === 0) return;
+
+    const mesh = intersects[0].object as THREE.Mesh;
+    const blockId = mesh.userData.blockId as string | undefined;
+
+    if (blockId) {
+      onSelectBlock?.(blockId);
+    }
+  };
+  const updateHover = (event: PointerEvent) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObjects(
+      Array.from(blockMeshes.values()),
+      false
+    );
+
+    const hit = intersects[0]?.object as THREE.Mesh | undefined;
+    const blockId = hit?.userData.blockId as string | undefined;
+
+    // odebrat starý hover
+    if (hoveredBlockId && hoveredBlockId !== selectedBlockId) {
+      const prev = blockMeshes.get(hoveredBlockId);
+      if (prev && hoveredBlockId !== selectedBlockId) {
+        const type = prev.userData.type as BlockType;
+        prev.material = materialCache.get(type)!;
+      }
+    }
+
+    hoveredBlockId = null;
+
+    // nový hover
+    if (blockId && blockId !== selectedBlockId) {
+      hoveredBlockId = blockId;
+      hit!.material = hoverMaterial;
+    }
+  };
+
 
   animate();
+  renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+  renderer.domElement.addEventListener("pointermove", updateHover);
+
 
   // === API, které vracíme Reactu ===
   const api: SceneAPI = {
     cleanup: () => {
+      renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+      renderer.domElement.removeEventListener("pointermove", updateHover);
+
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", handleResize);
       mountEl.removeChild(renderer.domElement);
@@ -115,6 +210,7 @@ export default function initScene(
         }
       });
       blockMeshes.clear();
+      
     },
 
     addBlock: (instance: BlockInstance) => {
@@ -145,6 +241,28 @@ export default function initScene(
       }
       blockMeshes.delete(id);
     },
+    setSelectedBlock: (id: string | null) => {
+      // odznačit starý výběr
+      if (selectedBlockId) {
+        const prevMesh = blockMeshes.get(selectedBlockId);
+        if (prevMesh) {
+          const prevType = (prevMesh.userData.type as BlockType) || null;
+          if (prevType) {
+          prevMesh.material = materialCache.get(prevType)!;
+          }
+        }
+      }
+
+      selectedBlockId = id;
+
+      // zvýraznit nový
+      if (id) {
+        const mesh = blockMeshes.get(id);
+        if (mesh) {
+          mesh.material = highlightMaterial;
+        }
+      }
+    }
   };
 
   return api;

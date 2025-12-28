@@ -1,8 +1,16 @@
 import { create } from "zustand";
 import type { BlockInstance, BlockType, Vec3 } from "../models/blocks";
 
+const isSamePosition = (
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number }
+) => a.x === b.x && a.y === b.y && a.z === b.z;
+
+
 interface BlocksState {
   blocks: BlockInstance[];
+
+  selectedBlockId: string | null;
 
   addBlock: (
     type: BlockType,
@@ -10,6 +18,8 @@ interface BlocksState {
     rotationY?: 0 | 90 | 180 | 270
   ) => void;
 
+  removeBlock: (id: string) => void;
+  selectBlock: (id: string | null) => void;
   clearBlocks: () => void;
 }
 
@@ -17,10 +27,22 @@ let idCounter = 1;
 
 export const useBlocksStore = create<BlocksState>((set) => ({
   blocks: [],
+  selectedBlockId: null,
 
-  // přidání bloku do světa
   addBlock: (type, position, rotationY = 0) =>
-    set((state) => ({
+  set((state) => {
+    const alreadyExists = state.blocks.some((b) =>
+      isSamePosition(b.position, position)
+    );
+
+    if (alreadyExists) {
+      console.warn(
+        `Block already exists at (${position.x}, ${position.y}, ${position.z})`
+      );
+      return state; // ❗ NIC neměníme
+    }
+
+    return {
       blocks: [
         ...state.blocks,
         {
@@ -30,8 +52,18 @@ export const useBlocksStore = create<BlocksState>((set) => ({
           rotationY,
         },
       ],
+    };
+  }),
+
+
+  removeBlock: (id) =>
+    set((state) => ({
+      blocks: state.blocks.filter((b) => b.id !== id),
+      selectedBlockId:
+        state.selectedBlockId === id ? null : state.selectedBlockId,
     })),
 
-  // smazání všech bloků (hodí se pro reset scény)
-  clearBlocks: () => set({ blocks: [] }),
+  selectBlock: (id) => set({ selectedBlockId: id }),
+
+  clearBlocks: () => set({ blocks: [], selectedBlockId: null }),
 }));
