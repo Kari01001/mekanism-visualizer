@@ -14,12 +14,10 @@ body {
   height: 100vh;
 }
 
-/* pravá část – 3D canvas */
 .canvas-container {
   flex: 1;
 }
 
-/* levá část – UI panel */
 .sidebar {
   width: 260px;
   background: #1a1a1a;

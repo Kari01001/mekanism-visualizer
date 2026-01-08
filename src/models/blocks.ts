@@ -1,34 +1,27 @@
-// src/models/blocks.ts
-
-// jednoduchý 3D vektor pro pozici na gridu
 export interface Vec3 {
   x: number;
   y: number;
   z: number;
 }
 
-// typy bloků – později sem přidám konkrétní Mekanism stroje
 export type BlockType =
-  | "basic_block"   // testovací univerzální blok
+  | "basic_block"
   | "generator_basic"
   | "cable_basic";
 
-// jedna instance bloku ve světě
 export interface BlockInstance {
-  id: string;          // unikátní ID (třeba "block-1")
+  id: string;
   type: BlockType;
-  position: Vec3;      // pozice v prostoru (v “kostičkách”)
-  rotationY: 0 | 90 | 180 | 270; // rotace kolem Y, jako v MC
+  position: Vec3;
+  rotationY: 0 | 90 | 180 | 270;
 }
 
-// definice typu bloku – jak se má vizuálně renderovat
 export interface BlockDefinition {
   type: BlockType;
   displayName: string;
-  color: number; // hex barva pro Three.js (0xRRGGBB)
+  color: number;
 }
 
-// „registr“ všech typů bloků
 export const BLOCK_DEFINITIONS: Record<BlockType, BlockDefinition> = {
   basic_block: {
     type: "basic_block",

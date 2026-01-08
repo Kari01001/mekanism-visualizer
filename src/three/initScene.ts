@@ -9,6 +9,7 @@ export interface SceneAPI {
   addBlock: (block: BlockInstance) => void;
   removeBlock: (id: string) => void;
   setSelectedBlock: (id: string | null) => void;
+  updateBlock: (block: BlockInstance) => void;
 }
 
 
@@ -38,7 +39,6 @@ export default function initScene(
   controls.dampingFactor = 0.1;
   controls.target.set(0, 0, 0);
 
-  // světla
   const ambient = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambient);
 
@@ -46,12 +46,9 @@ export default function initScene(
   dir.position.set(5, 10, 7);
   scene.add(dir);
 
-  // grid
   const grid = new THREE.GridHelper(16, 16, 0x444444, 0x222222);
   grid.position.y = -0.5;
   scene.add(grid);
-
-  // společná geometrie pro všechny bloky (kostka 1×1×1)
   const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
   const materialCache = new Map<BlockType, THREE.MeshStandardMaterial>();
 
@@ -70,7 +67,6 @@ export default function initScene(
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
 
-  // mapování id -> mesh
   const blockMeshes = new Map<string, THREE.Mesh>();
   let selectedBlockId: string | null = null;
 
@@ -94,7 +90,7 @@ export default function initScene(
 
     mesh.position.set(
       instance.position.x,
-      instance.position.y + 0.5, // ať sedí na gridu
+      instance.position.y + 0.5,
       instance.position.z
     );
     mesh.userData.blockId = instance.id;
@@ -106,7 +102,6 @@ export default function initScene(
     blockMeshes.set(instance.id, mesh);
   };
 
-  // vytvořit počáteční bloky
   initialBlocks.forEach(createBlockMesh);
 
   const handleResize = () => {
@@ -165,7 +160,6 @@ export default function initScene(
     const hit = intersects[0]?.object as THREE.Mesh | undefined;
     const blockId = hit?.userData.blockId as string | undefined;
 
-    // odebrat starý hover
     if (hoveredBlockId && hoveredBlockId !== selectedBlockId) {
       const prev = blockMeshes.get(hoveredBlockId);
       if (prev && hoveredBlockId !== selectedBlockId) {
@@ -176,7 +170,6 @@ export default function initScene(
 
     hoveredBlockId = null;
 
-    // nový hover
     if (blockId && blockId !== selectedBlockId) {
       hoveredBlockId = blockId;
       hit!.material = hoverMaterial;
@@ -189,7 +182,6 @@ export default function initScene(
   renderer.domElement.addEventListener("pointermove", updateHover);
 
 
-  // === API, které vracíme Reactu ===
   const api: SceneAPI = {
     cleanup: () => {
       renderer.domElement.addEventListener("pointerdown", handlePointerDown);
@@ -214,7 +206,6 @@ export default function initScene(
     },
 
     addBlock: (instance: BlockInstance) => {
-      // kdyby náhodou blok se stejným id už existoval, nejdřív ho smažeme
       const existing = blockMeshes.get(instance.id);
       if (existing) {
         scene.remove(existing);
@@ -242,7 +233,6 @@ export default function initScene(
       blockMeshes.delete(id);
     },
     setSelectedBlock: (id: string | null) => {
-      // odznačit starý výběr
       if (selectedBlockId) {
         const prevMesh = blockMeshes.get(selectedBlockId);
         if (prevMesh) {
@@ -255,13 +245,24 @@ export default function initScene(
 
       selectedBlockId = id;
 
-      // zvýraznit nový
       if (id) {
         const mesh = blockMeshes.get(id);
         if (mesh) {
           mesh.material = highlightMaterial;
         }
       }
+    },
+    updateBlock: (instance: BlockInstance) => {
+      const mesh = blockMeshes.get(instance.id);
+      if (!mesh) return;
+
+      mesh.position.set(
+        instance.position.x,
+        instance.position.y + 0.5,
+        instance.position.z
+      );
+
+      mesh.rotation.y = (instance.rotationY * Math.PI) / 180;
     }
   };
 

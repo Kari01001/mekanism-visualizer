@@ -9,9 +9,11 @@ const isSamePosition = (
 
 interface BlocksState {
   blocks: BlockInstance[];
-
   selectedBlockId: string | null;
 
+  mode: "view" | "edit";
+  setMode: (mode: "view" | "edit") => void;
+  
   addBlock: (
     type: BlockType,
     position: Vec3,
@@ -19,6 +21,7 @@ interface BlocksState {
   ) => void;
 
   removeBlock: (id: string) => void;
+  moveBlock: (id: string, delta: {x?: number; y?: number, z?: number}) => void;
   selectBlock: (id: string | null) => void;
   clearBlocks: () => void;
 }
@@ -28,6 +31,8 @@ let idCounter = 1;
 export const useBlocksStore = create<BlocksState>((set) => ({
   blocks: [],
   selectedBlockId: null,
+  mode: "edit",
+  setMode: (mode) => set({ mode }),
 
   addBlock: (type, position, rotationY = 0) =>
   set((state) => {
@@ -39,7 +44,7 @@ export const useBlocksStore = create<BlocksState>((set) => ({
       console.warn(
         `Block already exists at (${position.x}, ${position.y}, ${position.z})`
       );
-      return state; // ❗ NIC neměníme
+      return state;
     }
 
     return {
@@ -55,15 +60,30 @@ export const useBlocksStore = create<BlocksState>((set) => ({
     };
   }),
 
-
   removeBlock: (id) =>
     set((state) => ({
       blocks: state.blocks.filter((b) => b.id !== id),
       selectedBlockId:
         state.selectedBlockId === id ? null : state.selectedBlockId,
     })),
+    
+  moveBlock: (id, delta) =>
+    set((state) => ({
+      blocks: state.blocks.map((b) =>
+        b.id === id
+          ? {
+              ...b,
+              position: {
+                x: b.position.x + (delta.x ?? 0),
+                y: b.position.y + (delta.y ?? 0),
+                z: b.position.z + (delta.z ?? 0),
+              },
+            }
+          : b
+      ),
+    })),
 
   selectBlock: (id) => set({ selectedBlockId: id }),
 
-  clearBlocks: () => set({ blocks: [], selectedBlockId: null }),
+  clearBlocks: () => set({ blocks: [], selectedBlockId: null })
 }));
