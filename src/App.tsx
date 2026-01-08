@@ -39,6 +39,7 @@ const App = () => {
   const addBlockToStore = useBlocksStore((s) => s.addBlock);
   const clearBlocks = useBlocksStore((s) => s.clearBlocks);
   const selectedBlockId = useBlocksStore((s) => s.selectedBlockId);
+  const selectBlock = useBlocksStore((s) => s.selectBlock);
 
 
   // UI state pro formulář
@@ -59,9 +60,12 @@ const App = () => {
   useEffect(() => {
     if (!mountRef.current) return;
 
-    const api = initScene(mountRef.current, []);
+    const api = initScene(
+      mountRef.current,
+      [],
+      (id) => selectBlock(id)
+    );
     sceneRef.current = api;
-
     return () => {
       api.cleanup();
       sceneRef.current = null;
