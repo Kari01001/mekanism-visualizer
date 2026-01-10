@@ -3,6 +3,8 @@ import { useBlocksStore } from "../state/useBlocksStore";
 const Inspector = () => {
     const selectedBlockId = useBlocksStore((s) => s.selectedBlockId);
     const blocks = useBlocksStore((s) => s.blocks);
+    const transformMode = useBlocksStore((s) => s.transformMode);
+    const setTransformMode = useBlocksStore((s) => s.setTransformMode);
     const moveBlock = useBlocksStore((s) => s.moveBlock);
     const mode = useBlocksStore((s) => s.mode);
 
@@ -39,8 +41,13 @@ const Inspector = () => {
 
             {mode === "edit" && (
                 <>
+                <h4>Transform</h4>
+                <div style={{ display: "flex", gap: 8, marginBottom: 12}}>
+                    <button onClick={() => setTransformMode("none")} style={{ background: transformMode === "move" ? "#333" : undefined,}}>None</button>
+                    <button onClick={() => setTransformMode("move")} style={{ background: transformMode === "move" ? "#333" : undefined,}}>Move</button>
+                </div>
+                
                 <h4>Move</h4>
-
                 <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
                     <button onClick={() => moveBlock(block.id, { x: -1 })}>X −</button>
                     <button onClick={() => moveBlock(block.id, { x: +1 })}>X +</button>

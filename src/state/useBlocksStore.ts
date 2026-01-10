@@ -14,6 +14,8 @@ interface BlocksState {
   mode: "view" | "edit";
   setMode: (mode: "view" | "edit") => void;
   
+  transformMode: "none" | "move";
+  setTransformMode: (mode: "none" | "move") => void;
   addBlock: (
     type: BlockType,
     position: Vec3,
@@ -34,6 +36,9 @@ export const useBlocksStore = create<BlocksState>((set) => ({
   mode: "edit",
   setMode: (mode) => set({ mode }),
 
+  transformMode: "none",
+  setTransformMode: (transformMode) => set({transformMode}),
+  
   addBlock: (type, position, rotationY = 0) =>
   set((state) => {
     const alreadyExists = state.blocks.some((b) =>
