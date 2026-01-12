@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { BLOCK_DEFINITIONS } from "../models/blocks";
 import type { BlockInstance, BlockType } from "../models/blocks";
-
+import { MoveGizmo } from "./gizmos/MoveGizmo";
+import { useBlocksStore } from "../state/useBlocksStore";
 
 export interface SceneAPI {
   cleanup: () => void;
@@ -33,6 +34,13 @@ export default function initScene(
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(mountEl.clientWidth, mountEl.clientHeight);
   mountEl.appendChild(renderer.domElement);
+
+  const moveGizmo = new MoveGizmo(camera, renderer.domElement, 
+    (locked) => {
+      controls.enabled = !locked;
+    }
+  );
+  scene.add(moveGizmo.group);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -117,6 +125,12 @@ export default function initScene(
 
   const animate = () => {
     frameId = requestAnimationFrame(animate);
+
+    const store = useBlocksStore.getState();
+    const selected = store.blocks.find((b): b is BlockInstance => b.id === store.selectedBlockId) ?? null;
+
+    moveGizmo.update(selected, store.transformMode === "move");
+
     controls.update();
     renderer.render(scene, camera);
   };
