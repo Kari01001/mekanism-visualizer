@@ -44,8 +44,6 @@ export class MoveGizmo {
     this.bindEvents();
   }
 
-  // ---------- PUBLIC ----------
-
   update(block: BlockInstance | null, enabled: boolean) {
     this.group.visible = !!block && enabled;
     if (!block) return;
@@ -62,8 +60,6 @@ export class MoveGizmo {
     window.removeEventListener("pointermove", this.onPointerMove);
     window.removeEventListener("pointerup", this.onPointerUp);
   }
-
-  // ---------- PRIVATE ----------
 
   private createAxes() {
     var data: [Axis, number, THREE.Vector3][] = [
@@ -98,7 +94,7 @@ export class MoveGizmo {
 
   private onPointerDown = (e: PointerEvent) => {
     var store = useBlocksStore.getState();
-    if (store.transformMode !== "move") return;
+    if (store.mode !== "edit" || store.transformMode !== "move") return;
 
     this.setMouse(e);
     this.raycaster.setFromCamera(this.mouse, this.camera);

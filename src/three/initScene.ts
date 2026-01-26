@@ -4,6 +4,7 @@ import { BLOCK_DEFINITIONS } from "../models/blocks";
 import type { BlockInstance, BlockType } from "../models/blocks";
 import { MoveGizmo } from "./gizmos/MoveGizmo";
 import { useBlocksStore } from "../state/useBlocksStore";
+import { RotateGizmo } from "./gizmos/RotateGizmo";
 
 export interface SceneAPI {
   cleanup: () => void;
@@ -13,9 +14,7 @@ export interface SceneAPI {
   updateBlock: (block: BlockInstance) => void;
 }
 
-
 export default function initScene(
-  
   mountEl: HTMLDivElement,
   initialBlocks: BlockInstance[],
   onSelectBlock?: (id: string | null) => void
@@ -41,6 +40,15 @@ export default function initScene(
     }
   );
   scene.add(moveGizmo.group);
+
+  const rotateGizmo = new RotateGizmo(
+    camera,
+    renderer.domElement,
+    (locked) => {
+      controls.enabled = !locked;
+    }
+  );
+  scene.add(rotateGizmo.group);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -95,6 +103,13 @@ export default function initScene(
 
 
     const mesh = new THREE.Mesh(blockGeometry, material);
+    const markerGeometry = new THREE.BoxGeometry(0.2, 0.05, 0.6);
+    const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+
+    marker.position.set(0, 0.55, 0.35);
+
+    mesh.add(marker);
 
     mesh.position.set(
       instance.position.x,
@@ -129,7 +144,16 @@ export default function initScene(
     const store = useBlocksStore.getState();
     const selected = store.blocks.find((b): b is BlockInstance => b.id === store.selectedBlockId) ?? null;
 
-    moveGizmo.update(selected, store.transformMode === "move");
+    const gizmoEnabled =
+      store.mode === "edit" && store.transformMode === "move";
+
+    moveGizmo.update(selected, gizmoEnabled);
+    const moveEnabled = store.mode === "edit" && store.transformMode === "move";
+
+    const rotateEnabled = store.mode === "edit" && store.transformMode === "rotate";
+
+    moveGizmo.update(selected, moveEnabled);
+    rotateGizmo.update(selected, rotateEnabled);
 
     controls.update();
     renderer.render(scene, camera);
@@ -207,6 +231,8 @@ export default function initScene(
 
       renderer.dispose();
       blockGeometry.dispose();
+      moveGizmo.dispose();
+      rotateGizmo.dispose();
 
       blockMeshes.forEach((mesh) => {
         if (Array.isArray(mesh.material)) {
@@ -277,6 +303,14 @@ export default function initScene(
       );
 
       mesh.rotation.y = (instance.rotationY * Math.PI) / 180;
+
+      if ((instance as any).rotationX !== undefined) {
+        mesh.rotation.x = ((instance as any).rotationX * Math.PI) / 180;
+      }
+
+      if ((instance as any).rotationZ !== undefined) {
+        mesh.rotation.z = ((instance as any).rotationZ * Math.PI) / 180;
+      }
     }
   };
 

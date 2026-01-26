@@ -14,8 +14,8 @@ interface BlocksState {
   mode: "view" | "edit";
   setMode: (mode: "view" | "edit") => void;
   
-  transformMode: "none" | "move";
-  setTransformMode: (mode: "none" | "move") => void;
+  transformMode: "none" | "move" | "rotate";
+  setTransformMode: (mode: "none" | "move" | "rotate") => void;
   addBlock: (
     type: BlockType,
     position: Vec3,
@@ -24,6 +24,8 @@ interface BlocksState {
 
   removeBlock: (id: string) => void;
   moveBlock: (id: string, delta: {x?: number; y?: number, z?: number}) => void;
+  rotateBlockAxis: (id: string, axis: "x" | "y" | "z", delta: 90 | -90) => void;
+  rotateBlock: (id: string, deltaY: 90 | -90) => void;
   selectBlock: (id: string | null) => void;
   clearBlocks: () => void;
 }
@@ -87,6 +89,54 @@ export const useBlocksStore = create<BlocksState>((set) => ({
           : b
       ),
     })),
+
+  rotateBlock: (id, deltaY) =>
+    set((state) => ({
+      blocks: state.blocks.map((b) =>
+        b.id === id
+          ? {
+              ...b,
+              rotationY:
+                ((b.rotationY + deltaY) % 360 + 360) % 360 as
+                  | 0
+                  | 90
+                  | 180
+                  | 270,
+            }
+          : b
+      ),
+  })),
+
+  rotateBlockAxis: (id, axis, delta) =>
+  set((state) => ({
+    blocks: state.blocks.map((b) =>
+      b.id === id
+        ? {
+            ...b,
+            rotationY:
+              axis === "y"
+                ? (((b.rotationY + delta) % 360 + 360) % 360 as
+                    | 0
+                    | 90
+                    | 180
+                    | 270)
+                : b.rotationY,
+
+            rotationX:
+              axis === "x"
+                ? (((((b as any).rotationX ?? 0) + delta) % 360 + 360) %
+                    360 as 0 | 90 | 180 | 270)
+                : (b as any).rotationX,
+
+            rotationZ:
+              axis === "z"
+                ? (((((b as any).rotationZ ?? 0) + delta) % 360 + 360) %
+                    360 as 0 | 90 | 180 | 270)
+                : (b as any).rotationZ,
+          }
+        : b
+    ),
+  })),
 
   selectBlock: (id) => set({ selectedBlockId: id }),
 
