@@ -119,7 +119,11 @@ export default function initScene(
     mesh.userData.blockId = instance.id;
     mesh.userData.type = instance.type;
 
-    mesh.rotation.y = (instance.rotationY * Math.PI) / 180;
+    mesh.rotation.set(
+      (instance.rotation.x * Math.PI) / 180,
+      (instance.rotation.y * Math.PI) / 180,
+      (instance.rotation.z * Math.PI) / 180
+    );
 
     scene.add(mesh);
     blockMeshes.set(instance.id, mesh);
@@ -302,16 +306,24 @@ export default function initScene(
         instance.position.z
       );
 
-      mesh.rotation.y = (instance.rotationY * Math.PI) / 180;
+      const store = useBlocksStore.getState();
 
-      if ((instance as any).rotationX !== undefined) {
-        mesh.rotation.x = ((instance as any).rotationX * Math.PI) / 180;
+      if (store.rotationSpace === "local") {
+        mesh.rotation.set(
+          THREE.MathUtils.degToRad(instance.rotation.x),
+          THREE.MathUtils.degToRad(instance.rotation.y),
+          THREE.MathUtils.degToRad(instance.rotation.z)
+        );
       }
 
-      if ((instance as any).rotationZ !== undefined) {
-        mesh.rotation.z = ((instance as any).rotationZ * Math.PI) / 180;
+      if (store.rotationSpace === "world" && store.gizmo.axis === null) {
+        mesh.rotation.set(
+          THREE.MathUtils.degToRad(instance.rotation.x),
+          THREE.MathUtils.degToRad(instance.rotation.y),
+          THREE.MathUtils.degToRad(instance.rotation.z)
+        );
       }
-    }
+    },
   };
 
   return api;

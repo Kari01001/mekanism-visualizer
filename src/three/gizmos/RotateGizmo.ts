@@ -113,6 +113,9 @@ export class RotateGizmo {
 
         this.dragging = true;
         this.activeAxis = axis;
+
+        store.setGizmoAxis(axis);
+
         this.accumulated = 0;
 
         this.dom.requestPointerLock();
@@ -136,18 +139,66 @@ export class RotateGizmo {
         const SNAP = Math.PI / 2;
 
         if (Math.abs(this.accumulated) >= SNAP) {
-            store.rotateBlockAxis(
-            id,
-            this.activeAxis,
-            this.accumulated > 0 ? 90 : -90
-            );
+            const delta = this.accumulated > 0 ? 90 : -90;
+            const { rotationSpace } = store;
 
+            if (rotationSpace === "local") {
+                store.rotateBlockAxis(id, this.activeAxis, delta);
+            } else {
+                const scene = (this.group.parent as THREE.Scene);
+                if (!scene) return;
+
+                const mesh = scene.children.find(
+                    (o): o is THREE.Mesh =>
+                    (o as any).userData?.blockId === id
+                );
+
+                if (!mesh) return;
+
+                const worldAxis = new THREE.Vector3(
+                    this.activeAxis === "x" ? 1 : 0,
+                    this.activeAxis === "y" ? 1 : 0,
+                    this.activeAxis === "z" ? 1 : 0
+                );
+
+                const angleRad = THREE.MathUtils.degToRad(delta);
+
+                const q = new THREE.Quaternion().setFromAxisAngle(worldAxis, angleRad);
+
+                mesh.quaternion.premultiply(q);
+            }
             this.accumulated = 0;
         }
     };
 
     private onPointerUp = () => {
         if (!this.dragging) return;
+
+        const store = useBlocksStore.getState();
+        const id = store.selectedBlockId;
+
+        if (id) {
+            const scene = this.group.parent as THREE.Scene;
+            const mesh = scene.children.find(
+            (o): o is THREE.Mesh =>
+                (o as any).userData?.blockId === id
+            );
+
+            if (mesh) {
+            const euler = new THREE.Euler().setFromQuaternion(
+                mesh.quaternion,
+                "XYZ"
+            );
+
+            store.setBlockRotation(id, {
+                x: Math.round(THREE.MathUtils.radToDeg(euler.x)),
+                y: Math.round(THREE.MathUtils.radToDeg(euler.y)),
+                z: Math.round(THREE.MathUtils.radToDeg(euler.z)),
+            });
+            }
+        }
+
+        store.setGizmoAxis(null);
 
         this.dragging = false;
         this.activeAxis = null;

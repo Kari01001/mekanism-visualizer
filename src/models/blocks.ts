@@ -13,7 +13,7 @@ export interface BlockInstance {
   id: string;
   type: BlockType;
   position: Vec3;
-  rotationY: 0 | 90 | 180 | 270;
+  rotation: {x: number; y: number;   z: number;};
 }
 
 export interface BlockDefinition {

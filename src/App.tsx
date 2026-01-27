@@ -1,6 +1,6 @@
 import { useEffect, useRef} from "react";
 import initScene, { type SceneAPI } from "./three/initScene";
-import type { BlockInstance} from "./models/blocks"; //import type { BlockInstance, BlockType } from "./models/blocks";
+import type { BlockInstance} from "./models/blocks";
 import { useBlocksStore } from "./state/useBlocksStore";
 import BlockList from "./components/BlockList";
 import Inspector from "./components/Inspector";
@@ -10,19 +10,19 @@ const initialBlocks: BlockInstance[] = [
     id: "block-1",
     type: "basic_block",
     position: { x: 0, y: 0, z: 0 },
-    rotationY: 0,
+    rotation: { x: 0, y: 0, z: 0 },
   },
   {
     id: "block-2",
     type: "generator_basic",
     position: { x: 2, y: 0, z: 0 },
-    rotationY: 90,
+    rotation: { x: 0, y: 0, z: 0 },
   },
   {
     id: "block-3",
     type: "cable_basic",
     position: { x: 1, y: 0, z: 0 },
-    rotationY: 0,
+    rotation: { x: 0, y: 0, z: 0 },
   },
 ];
 
@@ -44,7 +44,7 @@ const App = () => {
   useEffect(() => {
     clearBlocks();
     initialBlocks.forEach((b) =>
-      addBlockToStore(b.type, b.position, b.rotationY)
+      addBlockToStore(b.type, b.position)
     );
   }, [addBlockToStore, clearBlocks]);
   useEffect(() => {
@@ -78,7 +78,7 @@ const App = () => {
         api.addBlock(b);
         renderedIds.add(b.id);
       } else {
-        api.updateBlock(b); // ⬅️ TADY JE FIX
+        api.updateBlock(b);
       }
     });
 

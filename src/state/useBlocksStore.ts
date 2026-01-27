@@ -6,26 +6,33 @@ const isSamePosition = (
   b: { x: number; y: number; z: number }
 ) => a.x === b.x && a.y === b.y && a.z === b.z;
 
-
 interface BlocksState {
   blocks: BlockInstance[];
   selectedBlockId: string | null;
 
   mode: "view" | "edit";
+
+  gizmo: {
+    mode: "none" | "move" | "rotate";
+    axis: "x" | "y" | "z" | null;
+  };
+  setGizmoAxis: (axis: "x" | "y" | "z" | null) => void;
+
   setMode: (mode: "view" | "edit") => void;
   
   transformMode: "none" | "move" | "rotate";
   setTransformMode: (mode: "none" | "move" | "rotate") => void;
-  addBlock: (
-    type: BlockType,
-    position: Vec3,
-    rotationY?: 0 | 90 | 180 | 270
-  ) => void;
+  addBlock: (type: BlockType, position: Vec3) => void;
 
   removeBlock: (id: string) => void;
   moveBlock: (id: string, delta: {x?: number; y?: number, z?: number}) => void;
   rotateBlockAxis: (id: string, axis: "x" | "y" | "z", delta: 90 | -90) => void;
-  rotateBlock: (id: string, deltaY: 90 | -90) => void;
+
+  setBlockRotation: (id: string, rotation: { x: number; y: number; z: number }) => void;
+
+  rotationSpace: "local" | "world";
+  setRotationSpace: (space: "local" | "world") => void;
+
   selectBlock: (id: string | null) => void;
   clearBlocks: () => void;
 }
@@ -36,12 +43,17 @@ export const useBlocksStore = create<BlocksState>((set) => ({
   blocks: [],
   selectedBlockId: null,
   mode: "edit",
+  gizmo: {
+    mode: "none",
+    axis: null,
+  },
+  
   setMode: (mode) => set({ mode }),
 
   transformMode: "none",
   setTransformMode: (transformMode) => set({transformMode}),
   
-  addBlock: (type, position, rotationY = 0) =>
+  addBlock: (type, position) =>
   set((state) => {
     const alreadyExists = state.blocks.some((b) =>
       isSamePosition(b.position, position)
@@ -61,7 +73,7 @@ export const useBlocksStore = create<BlocksState>((set) => ({
           id: `block-${idCounter++}`,
           type,
           position,
-          rotationY,
+          rotation: { x: 0, y: 0, z: 0 },
         },
       ],
     };
@@ -90,53 +102,43 @@ export const useBlocksStore = create<BlocksState>((set) => ({
       ),
     })),
 
-  rotateBlock: (id, deltaY) =>
-    set((state) => ({
-      blocks: state.blocks.map((b) =>
-        b.id === id
-          ? {
-              ...b,
-              rotationY:
-                ((b.rotationY + deltaY) % 360 + 360) % 360 as
-                  | 0
-                  | 90
-                  | 180
-                  | 270,
-            }
-          : b
-      ),
-  })),
-
   rotateBlockAxis: (id, axis, delta) =>
   set((state) => ({
     blocks: state.blocks.map((b) =>
       b.id === id
         ? {
             ...b,
-            rotationY:
-              axis === "y"
-                ? (((b.rotationY + delta) % 360 + 360) % 360 as
-                    | 0
-                    | 90
-                    | 180
-                    | 270)
-                : b.rotationY,
-
-            rotationX:
-              axis === "x"
-                ? (((((b as any).rotationX ?? 0) + delta) % 360 + 360) %
-                    360 as 0 | 90 | 180 | 270)
-                : (b as any).rotationX,
-
-            rotationZ:
-              axis === "z"
-                ? (((((b as any).rotationZ ?? 0) + delta) % 360 + 360) %
-                    360 as 0 | 90 | 180 | 270)
-                : (b as any).rotationZ,
+            rotation: {
+              ...b.rotation,
+              [axis]:
+                ((b.rotation[axis] + delta) % 360 + 360) % 360,
+            },
           }
         : b
     ),
   })),
+
+  rotationSpace: "local",
+  setRotationSpace: (rotationSpace) => set({ rotationSpace }),
+
+  setBlockRotation: (id, rotation) =>
+    set((state) => ({
+      blocks: state.blocks.map((b) =>
+        b.id === id
+          ? { ...b, rotation }
+          : b
+      ),
+    })
+  ),
+
+  setGizmoAxis: (axis: "x" | "y" | "z" | null) =>
+  set((state) => ({
+    gizmo: {
+      ...state.gizmo,
+      axis,
+    },
+  })),
+  
 
   selectBlock: (id) => set({ selectedBlockId: id }),
 

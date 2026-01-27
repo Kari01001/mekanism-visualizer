@@ -1,16 +1,24 @@
 import { useBlocksStore } from "../state/useBlocksStore";
 
 const Inspector = () => {
+  const round = (v: number) => Math.round(v);
   const selectedBlockId = useBlocksStore((s) => s.selectedBlockId);
   const blocks = useBlocksStore((s) => s.blocks);
   
   const mode = useBlocksStore((s) => s.mode);
 
   const transformMode = useBlocksStore((s) => s.transformMode);
+
+  const gizmo = useBlocksStore((s) => s.gizmo);
+  const setGizmoAxis = useBlocksStore((s) => s.setGizmoAxis);
+
   const setTransformMode = useBlocksStore((s) => s.setTransformMode);
 
   const moveBlock = useBlocksStore((s) => s.moveBlock);
-  const rotateBlock = useBlocksStore((s) => s.rotateBlock);
+  const rotateBlockAxis = useBlocksStore((s) => s.rotateBlockAxis);
+
+  const rotationSpace = useBlocksStore((s) => s.rotationSpace);
+  const setRotationSpace = useBlocksStore((s) => s.setRotationSpace);
 
   const block = blocks.find((b) => b.id === selectedBlockId);
 
@@ -35,20 +43,63 @@ const Inspector = () => {
         </p>
 
         <p>
-          <strong>Position</strong>
+          <strong>Rotation</strong>
           <br />
-          X: {block.position.x}
+          X: {round(block.rotation.x)}°
           <br />
-          Y: {block.position.y}
+          Y: {round(block.rotation.y)}°
           <br />
-          Z: {block.position.z}
+          Z: {round(block.rotation.z)}°
         </p>
-
+        
+        <h4>Gizmo debug</h4>
         <p>
-          <strong>Rotation Y</strong>
+          <strong>Mode:</strong> {gizmo.mode}
           <br />
-          {block.rotationY}°
+          <strong>Axis:</strong>{" "}
+          <span
+            style={{
+              color:
+                gizmo.axis === "x"
+                  ? "red"
+                  : gizmo.axis === "y"
+                  ? "lime"
+                  : gizmo.axis === "z"
+                  ? "dodgerblue"
+                  : "#888",
+              fontWeight: 600,
+            }}
+          >
+            {gizmo.axis ?? "—"}
+          </span>
         </p>
+        <h4>Rotation Space</h4>
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <button
+            onClick={() => setRotationSpace("local")}
+            style={{
+              background: rotationSpace === "local" ? "#333" : undefined,
+            }}
+          >
+            Local
+          </button>
+
+          <button
+            onClick={() => setRotationSpace("world")}
+            style={{
+              background: rotationSpace === "world" ? "#333" : undefined,
+            }}
+          >
+            World
+          </button>
+        </div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+          <button onClick={() => setGizmoAxis("x")}>X</button>
+          <button onClick={() => setGizmoAxis("y")}>Y</button>
+          <button onClick={() => setGizmoAxis("z")}>Z</button>
+          <button onClick={() => setGizmoAxis(null)}>Clear</button>
+        </div>
 
         {mode === "edit" && (
           <>
@@ -89,7 +140,7 @@ const Inspector = () => {
 
                 <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
                   <button onClick={() => moveBlock(block.id, { x: -1 })}>
-                    X −
+                    X -
                   </button>
                   <button onClick={() => moveBlock(block.id, { x: +1 })}>
                     X +
@@ -98,7 +149,7 @@ const Inspector = () => {
 
                 <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
                   <button onClick={() => moveBlock(block.id, { z: -1 })}>
-                    Z −
+                    Z -
                   </button>
                   <button onClick={() => moveBlock(block.id, { z: +1 })}>
                     Z +
@@ -107,7 +158,7 @@ const Inspector = () => {
 
                 <div style={{ display: "flex", gap: 6 }}>
                   <button onClick={() => moveBlock(block.id, { y: -1 })}>
-                    Y −
+                    Y -
                   </button>
                   <button onClick={() => moveBlock(block.id, { y: +1 })}>
                     Y +
@@ -119,10 +170,7 @@ const Inspector = () => {
             {transformMode === "rotate" && (
               <>
                 <h4>Rotate</h4>
-
-                <button onClick={() => rotateBlock(block.id, 90)}>
-                  Rotate +90°
-                </button>
+                <button onClick={() => rotateBlockAxis(block.id, "y", 90)}>Rotate Y +90°</button>
               </>
             )}
           </>
