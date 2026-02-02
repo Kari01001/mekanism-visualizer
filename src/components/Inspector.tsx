@@ -15,10 +15,6 @@ const Inspector = () => {
   const setTransformMode = useBlocksStore((s) => s.setTransformMode);
 
   const moveBlock = useBlocksStore((s) => s.moveBlock);
-  const rotateBlockAxis = useBlocksStore((s) => s.rotateBlockAxis);
-
-  const rotationSpace = useBlocksStore((s) => s.rotationSpace);
-  const setRotationSpace = useBlocksStore((s) => s.setRotationSpace);
 
   const block = blocks.find((b) => b.id === selectedBlockId);
 
@@ -73,27 +69,7 @@ const Inspector = () => {
             {gizmo.axis ?? "—"}
           </span>
         </p>
-        <h4>Rotation Space</h4>
 
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <button
-            onClick={() => setRotationSpace("local")}
-            style={{
-              background: rotationSpace === "local" ? "#333" : undefined,
-            }}
-          >
-            Local
-          </button>
-
-          <button
-            onClick={() => setRotationSpace("world")}
-            style={{
-              background: rotationSpace === "world" ? "#333" : undefined,
-            }}
-          >
-            World
-          </button>
-        </div>
         <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
           <button onClick={() => setGizmoAxis("x")}>X</button>
           <button onClick={() => setGizmoAxis("y")}>Y</button>
@@ -164,13 +140,6 @@ const Inspector = () => {
                     Y +
                   </button>
                 </div>
-              </>
-            )}
-
-            {transformMode === "rotate" && (
-              <>
-                <h4>Rotate</h4>
-                <button onClick={() => rotateBlockAxis(block.id, "y", 90)}>Rotate Y +90°</button>
               </>
             )}
           </>

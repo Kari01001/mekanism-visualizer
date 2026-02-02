@@ -18,7 +18,6 @@ export class RotateGizmo {
     private dragging: boolean;
     private activeAxis: Axis | null;
     private accumulated: number;
-
     constructor(
         camera: Camera,
         domElement: HTMLElement,
@@ -122,7 +121,6 @@ export class RotateGizmo {
         this.setCameraLocked(true);
         e.stopPropagation();
     };
-
     private onPointerMove = (e: PointerEvent) => {
         if (!this.dragging || !this.activeAxis) return;
 
@@ -135,38 +133,31 @@ export class RotateGizmo {
         const delta = e.movementX * sensitivity;
 
         this.accumulated += delta;
-
-        const SNAP = Math.PI / 2;
-
+        const SNAP = Math.PI / 2
         if (Math.abs(this.accumulated) >= SNAP) {
             const delta = this.accumulated > 0 ? 90 : -90;
-            const { rotationSpace } = store;
 
-            if (rotationSpace === "local") {
-                store.rotateBlockAxis(id, this.activeAxis, delta);
-            } else {
-                const scene = (this.group.parent as THREE.Scene);
-                if (!scene) return;
+            const scene = (this.group.parent as THREE.Scene);
+            if (!scene) return;
 
-                const mesh = scene.children.find(
-                    (o): o is THREE.Mesh =>
-                    (o as any).userData?.blockId === id
-                );
+            const mesh = scene.children.find(
+                (o): o is THREE.Mesh =>
+                (o as any).userData?.blockId === id
+            );
 
-                if (!mesh) return;
+            if (!mesh) return;
 
-                const worldAxis = new THREE.Vector3(
-                    this.activeAxis === "x" ? 1 : 0,
-                    this.activeAxis === "y" ? 1 : 0,
-                    this.activeAxis === "z" ? 1 : 0
-                );
+            const worldAxis = new THREE.Vector3(
+                this.activeAxis === "x" ? 1 : 0,
+                this.activeAxis === "y" ? 1 : 0,
+                this.activeAxis === "z" ? 1 : 0
+            );
 
-                const angleRad = THREE.MathUtils.degToRad(delta);
+            const angleRad = THREE.MathUtils.degToRad(delta);
 
-                const q = new THREE.Quaternion().setFromAxisAngle(worldAxis, angleRad);
+            const q = new THREE.Quaternion().setFromAxisAngle(worldAxis, angleRad);
 
-                mesh.quaternion.premultiply(q);
-            }
+            mesh.quaternion.premultiply(q);
             this.accumulated = 0;
         }
     };

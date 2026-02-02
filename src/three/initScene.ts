@@ -308,15 +308,7 @@ export default function initScene(
 
       const store = useBlocksStore.getState();
 
-      if (store.rotationSpace === "local") {
-        mesh.rotation.set(
-          THREE.MathUtils.degToRad(instance.rotation.x),
-          THREE.MathUtils.degToRad(instance.rotation.y),
-          THREE.MathUtils.degToRad(instance.rotation.z)
-        );
-      }
-
-      if (store.rotationSpace === "world" && store.gizmo.axis === null) {
+      if (store.gizmo.axis === null) {
         mesh.rotation.set(
           THREE.MathUtils.degToRad(instance.rotation.x),
           THREE.MathUtils.degToRad(instance.rotation.y),

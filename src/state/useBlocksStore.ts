@@ -30,9 +30,6 @@ interface BlocksState {
 
   setBlockRotation: (id: string, rotation: { x: number; y: number; z: number }) => void;
 
-  rotationSpace: "local" | "world";
-  setRotationSpace: (space: "local" | "world") => void;
-
   selectBlock: (id: string | null) => void;
   clearBlocks: () => void;
 }
@@ -117,9 +114,6 @@ export const useBlocksStore = create<BlocksState>((set) => ({
         : b
     ),
   })),
-
-  rotationSpace: "local",
-  setRotationSpace: (rotationSpace) => set({ rotationSpace }),
 
   setBlockRotation: (id, rotation) =>
     set((state) => ({
