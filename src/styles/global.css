@@ -24,3 +24,66 @@ body {
   border-right: 1px solid #333;
   padding: 16px;
 }
+
+/*
+TREE CSS
+*/
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+  border-radius: 4px;
+  position: relative;
+}
+
+.tree-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--depth) * 16px);
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent 15px,
+    #333 15px,
+    #333 16px
+  );
+  pointer-events: none;
+}
+
+.tree-row:hover {
+  background: #2a2d2e;
+}
+
+.tree-row.selected {
+  background: #094771;
+}
+
+.tree-caret {
+  width: 16px;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.tree-caret-placeholder {
+  width: 16px;
+}
+
+.tree-icon {
+  width: 20px;
+  text-align: center;
+  margin-right: 4px;
+}
+
+.tree-label-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

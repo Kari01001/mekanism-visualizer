@@ -1,9 +1,10 @@
 import { useEffect, useRef} from "react";
 import initScene, { type SceneAPI } from "./three/initScene";
-import type { BlockInstance} from "./models/blocks";
+import type { BlockInstance } from "./models/blocks";
 import { useBlocksStore } from "./state/useBlocksStore";
 import BlockList from "./components/BlockList";
 import Inspector from "./components/Inspector";
+import SceneTreeView from "./components/SceneTree/SceneTreeView";
 
 const initialBlocks: BlockInstance[] = [
   {
@@ -119,8 +120,10 @@ const App = () => {
             </button>
           </div>
           <hr style={{ borderColor: "#333", margin: "12px 0" }} />
+          <h3>Scene</h3>
+          <SceneTreeView/>
+          <hr/>
           <h3>New block</h3>
-          <hr style={{ borderColor: "#333", margin: "12px 0" }} />
           <BlockList mode={mode} />
         </div>
       </div>

@@ -18,6 +18,10 @@ const Inspector = () => {
 
   const block = blocks.find((b) => b.id === selectedBlockId);
 
+
+  const addBlockToGroup = useBlocksStore(s => s.addBlockToGroup);
+
+
   if (!block) {
     return (
       <div className="inspector">
@@ -34,6 +38,10 @@ const Inspector = () => {
       <div className="inspector-content">
         <h3>Inspector</h3>
 
+        
+        <button onClick={() => addBlockToGroup("root", "block-1")}>
+          Move block-1 to root
+        </button>
         <p>
           <strong>Type:</strong> {block.type}
         </p>
