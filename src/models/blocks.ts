@@ -14,6 +14,7 @@ export interface BlockInstance {
   type: BlockType;
   position: Vec3;
   rotation: {x: number; y: number;   z: number;};
+  parentGroupId: string;
 }
 
 export interface BlockDefinition {

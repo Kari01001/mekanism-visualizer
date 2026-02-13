@@ -1,0 +1,92 @@
+{
+  "sceneTree": {
+    "id": "root",
+    "type": "group",
+    "name": "Scene",
+    "children": [
+      {
+        "id": "grp-center",
+        "type": "group",
+        "name": "Center Core",
+        "children": []
+      },
+      {
+        "id": "grp-cross",
+        "type": "group",
+        "name": "Cross Arms",
+        "children": []
+      },
+      {
+        "id": "grp-ring",
+        "type": "group",
+        "name": "Outer Ring",
+        "children": []
+      }
+    ]
+  },
+  "blocks": [
+    {
+      "id": "block-center",
+      "type": "generator_basic",
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "parentGroupId": "grp-center"
+    },
+    {
+      "id": "block-north",
+      "type": "basic_block",
+      "position": { "x": 0, "y": 0, "z": -2 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "parentGroupId": "grp-cross"
+    },
+    {
+      "id": "block-south",
+      "type": "basic_block",
+      "position": { "x": 0, "y": 0, "z": 2 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "parentGroupId": "grp-cross"
+    },
+    {
+      "id": "block-east",
+      "type": "basic_block",
+      "position": { "x": 2, "y": 0, "z": 0 },
+      "rotation": { "x": 0, "y": 90, "z": 0 },
+      "parentGroupId": "grp-cross"
+    },
+    {
+      "id": "block-west",
+      "type": "basic_block",
+      "position": { "x": -2, "y": 0, "z": 0 },
+      "rotation": { "x": 0, "y": 90, "z": 0 },
+      "parentGroupId": "grp-cross"
+    },
+    {
+      "id": "block-ring-1",
+      "type": "cable_basic",
+      "position": { "x": 3, "y": 0, "z": 3 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "parentGroupId": "grp-ring"
+    },
+    {
+      "id": "block-ring-2",
+      "type": "cable_basic",
+      "position": { "x": -3, "y": 0, "z": 3 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "parentGroupId": "grp-ring"
+    },
+    {
+      "id": "block-ring-3",
+      "type": "cable_basic",
+      "position": { "x": 3, "y": 0, "z": -3 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "parentGroupId": "grp-ring"
+    },
+    {
+      "id": "block-ring-4",
+      "type": "cable_basic",
+      "position": { "x": -3, "y": 0, "z": -3 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "parentGroupId": "grp-ring"
+    }
+  ]
+}

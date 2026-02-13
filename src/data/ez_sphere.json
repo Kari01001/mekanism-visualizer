@@ -1,0 +1,41 @@
+{
+  "sceneTree": {
+    "id": "root",
+    "type": "group",
+    "name": "Scene",
+    "children": [
+      {
+        "id": "grp-sphere",
+        "type": "group",
+        "name": "Sphere R5",
+        "children": []
+      }
+    ]
+  },
+  "blocks": [
+
+    { "id": "s-top", "type": "basic_block", "position": { "x": 0, "y": 10, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+
+    { "id": "s-9-1", "type": "basic_block", "position": { "x": 2, "y": 9, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-9-2", "type": "basic_block", "position": { "x": -2, "y": 9, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-9-3", "type": "basic_block", "position": { "x": 0, "y": 9, "z": 2 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-9-4", "type": "basic_block", "position": { "x": 0, "y": 9, "z": -2 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+
+    { "id": "s-8-1", "type": "basic_block", "position": { "x": 3, "y": 8, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-8-2", "type": "basic_block", "position": { "x": -3, "y": 8, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-8-3", "type": "basic_block", "position": { "x": 0, "y": 8, "z": 3 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-8-4", "type": "basic_block", "position": { "x": 0, "y": 8, "z": -3 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+
+    { "id": "s-eq-1", "type": "basic_block", "position": { "x": 5, "y": 5, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-eq-2", "type": "basic_block", "position": { "x": -5, "y": 5, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-eq-3", "type": "basic_block", "position": { "x": 0, "y": 5, "z": 5 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-eq-4", "type": "basic_block", "position": { "x": 0, "y": 5, "z": -5 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-eq-5", "type": "basic_block", "position": { "x": 3, "y": 5, "z": 3 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-eq-6", "type": "basic_block", "position": { "x": -3, "y": 5, "z": 3 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-eq-7", "type": "basic_block", "position": { "x": 3, "y": 5, "z": -3 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+    { "id": "s-eq-8", "type": "basic_block", "position": { "x": -3, "y": 5, "z": -3 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" },
+
+    { "id": "s-bottom", "type": "basic_block", "position": { "x": 0, "y": 0, "z": 0 }, "rotation": { "x": 0, "y": 0, "z": 0 }, "parentGroupId": "grp-sphere" }
+
+  ]
+}

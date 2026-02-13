@@ -4,68 +4,99 @@ import type { SceneTreeNode as SceneTreeNodeType } from "../../models/sceneTree"
 
 interface Props {
   node: SceneTreeNodeType;
-  depth: number;
+  isLast: boolean;
+  ancestorLines: boolean[];
   isRoot?: boolean;
 }
 
-const INDENT = 16;
-
-const SceneTreeNode = ({ node, depth, isRoot }: Props) => {
+const SceneTreeNode = ({
+  node,
+  isLast,
+  ancestorLines,
+  isRoot = false,
+}: Props) => {
   const selectBlock = useBlocksStore((s) => s.selectBlock);
   const selectedBlockId = useBlocksStore((s) => s.selectedBlockId);
 
   const [expanded, setExpanded] = useState(true);
 
-  const paddingLeft = isRoot ? 4 : depth * INDENT + 8;
+  const hasChildren =
+    node.type === "group" && node.children.length > 0;
+
+  const renderPrefix = () => ancestorLines.map((hasLine, i) => (
+    <span
+      key={i}
+      className={`tree-line ${hasLine ? "active" : ""}`}
+    />
+  ));
+  
+  const renderConnector = () => (
+    <span
+      className={`tree-connector ${isLast ? "last" : ""}`}
+    />
+  );
 
   if (node.type === "group") {
     return (
       <>
         <div
           className="tree-row"
-          style={{
-            paddingLeft,
-            ["--depth" as any]: depth
-          }}
-          onClick={() => setExpanded((e) => !e)}
+          onClick={() =>
+            hasChildren && setExpanded((e) => !e)
+          }
         >
+          {renderPrefix()}
+          {!isRoot ? renderConnector() : <span className="tree-spacer" />}
+
           <span className="tree-caret">
-            {expanded ? "▾" : "▸"}
+            {hasChildren ? (expanded ? "▾" : "▸") : ""}
           </span>
+
           <span className="tree-icon">📁</span>
-          <span className="tree-label-text">{node.name}</span>
+          <span className="tree-label">{node.name}</span>
         </div>
 
         {expanded &&
-          node.children.map((child) => (
-            <SceneTreeNode
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-            />
-          ))}
+          node.children.map((child, index) => {
+            const childIsLast =
+              index === node.children.length - 1;
+
+            return (
+              <SceneTreeNode
+                key={child.id}
+                node={child}
+                isLast={childIsLast}
+                ancestorLines={[
+                  ...ancestorLines,
+                  !isLast,
+                ]}
+              />
+            );
+          })}
       </>
     );
   }
 
-  // BLOCK
   return (
     <div
       className={`tree-row ${
-        selectedBlockId === node.blockId ? "selected" : ""
+        selectedBlockId === node.blockId
+          ? "selected"
+          : ""
       }`}
-      style={{
-        paddingLeft,
-        ["--depth" as any]: depth
-      }}
       onClick={(e) => {
         e.stopPropagation();
         selectBlock(node.blockId);
       }}
     >
+      {renderPrefix()}
+      {renderConnector()}
+
       <span className="tree-caret-placeholder" />
       <span className="tree-icon">🧊</span>
-      <span className="tree-label-text">{node.blockId}</span>
+      <span className="tree-label">
+        {node.blockId}
+      </span>
     </div>
   );
 };

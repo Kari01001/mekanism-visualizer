@@ -31,7 +31,9 @@ export default function initScene(
   camera.position.set(6, 6, 6);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(mountEl.clientWidth, mountEl.clientHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(mountEl.clientWidth, mountEl.clientHeight, false);
+
   mountEl.appendChild(renderer.domElement);
 
   const moveGizmo = new MoveGizmo(camera, renderer.domElement, 
@@ -131,19 +133,23 @@ export default function initScene(
 
   initialBlocks.forEach(createBlockMesh);
 
-  const handleResize = () => {
-    const { clientWidth, clientHeight } = mountEl;
-    camera.aspect = clientWidth / clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(clientWidth, clientHeight);
-  };
-
-  window.addEventListener("resize", handleResize);
-
   let frameId: number;
+  let lastWidth = 0;
+  let lastHeight = 0;
 
   const animate = () => {
     frameId = requestAnimationFrame(animate);
+    const width = mountEl.clientWidth;
+    const height = mountEl.clientHeight;
+
+    if (width !== lastWidth || height !== lastHeight) {
+      lastWidth = width;
+      lastHeight = height;
+
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height, false);
+    }
 
     const store = useBlocksStore.getState();
     const selected = store.blocks.find((b): b is BlockInstance => b.id === store.selectedBlockId) ?? null;
@@ -218,7 +224,6 @@ export default function initScene(
     }
   };
 
-
   animate();
   renderer.domElement.addEventListener("pointerdown", handlePointerDown);
   renderer.domElement.addEventListener("pointermove", updateHover);
@@ -226,11 +231,10 @@ export default function initScene(
 
   const api: SceneAPI = {
     cleanup: () => {
-      renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
       renderer.domElement.removeEventListener("pointermove", updateHover);
 
       cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", handleResize);
       mountEl.removeChild(renderer.domElement);
 
       renderer.dispose();

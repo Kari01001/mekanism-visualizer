@@ -9,52 +9,148 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-.app-root {
-  display: flex;
+.layout-root {
   height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.canvas-container {
-  flex: 1;
+.topbar {
+  background: #1c1c1c;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 14px;
 }
 
-.sidebar {
-  width: 260px;
+.menu {
+  display: flex;
+  gap: 20px;
+}
+
+.menu-item {
+  position: relative;
+  padding: 6px 4px;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: #2a2a2a;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #222;
+  border: 1px solid #333;
+  min-width: 120px;
+  display: none;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+.menu-item:hover .dropdown {
+  display: flex;
+}
+
+.dropdown div {
+  padding: 6px 10px;
+}
+
+.dropdown div:hover {
+  background: #333;
+}
+
+.layout-main {
+  display: grid;
+  grid-template-columns: 240px 1fr 300px;
+  height: 100%;
+}
+
+.panel-left {
   background: #1a1a1a;
   border-right: 1px solid #333;
-  padding: 16px;
+  padding: 12px;
+  overflow: auto;
 }
 
-/*
-TREE CSS
-*/
+.panel-right {
+  background: #1a1a1a;
+  border-left: 1px solid #333;
+  overflow: auto;
+  padding: 0;
+}
+
+.center-area {
+  display: grid;
+  grid-template-rows: 32px 1fr 180px;
+  background: #111;
+  border-left: 1px solid #333;
+  border-right: 1px solid #333;
+  min-height: 0;
+}
+
+.canvas-header {
+  display: flex;
+  background: #1c1c1c;
+  border-bottom: 1px solid #333;
+}
+
+.tab {
+  padding: 6px 12px;
+  cursor: pointer;
+  color: #aaa;
+}
+
+.tab.active {
+  background: #2a2a2a;
+  color: white;
+}
+
+.canvas-wrapper {
+  overflow: hidden;
+  will-change: width, height;
+}
+
+.console-panel {
+  background: #161616;
+  border-top: 1px solid #333;
+  padding: 8px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #ccc;
+  overflow: auto;
+}
+
+.mode-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.mode-toolbar button {
+  flex: 1;
+  background: #252525;
+  border: 1px solid #333;
+  color: #ccc;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.mode-toolbar button:hover {
+  background: #333;
+}
 
 .tree-row {
   display: flex;
   align-items: center;
   height: 24px;
+  font-size: 13px;
   cursor: pointer;
   user-select: none;
-  font-size: 13px;
-  border-radius: 4px;
-  position: relative;
-}
-
-.tree-row::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: calc(var(--depth) * 16px);
-  background-image: repeating-linear-gradient(
-    to right,
-    transparent 0,
-    transparent 15px,
-    #333 15px,
-    #333 16px
-  );
-  pointer-events: none;
 }
 
 .tree-row:hover {
@@ -65,25 +161,283 @@ TREE CSS
   background: #094771;
 }
 
-.tree-caret {
+.tree-line,
+.tree-connector,
+.tree-spacer {
   width: 16px;
-  text-align: center;
-  opacity: 0.8;
+  height: 24px;
+  position: relative;
+  flex-shrink: 0;
 }
 
+.tree-line.active::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: #444;
+}
+
+.tree-connector::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: #444;
+}
+
+.tree-connector::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 12px;
+  width: 8px;
+  height: 1px;
+  background: #444;
+}
+
+.tree-connector.last::before {
+  height: 12px;
+}
+
+.tree-caret,
 .tree-caret-placeholder {
   width: 16px;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 .tree-icon {
   width: 20px;
   text-align: center;
   margin-right: 4px;
+  flex-shrink: 0;
 }
 
-.tree-label-text {
-  flex: 1;
+.tree-label {
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.inspector {
+  height: 100%;
+  background: #1b1b1b;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+
+.inspector-header {
+  padding: 6px 10px;
+  background: #202020;
+  border-bottom: 1px solid #333;
+  font-weight: 600;
+}
+
+.inspector-transform-strip {
+  padding: 6px 10px;
+  background: #252525;
+  border-bottom: 1px solid #333;
+  font-weight: 500;
+}
+
+.inspector-section {
+  border-bottom: 1px solid #333;
+  background: #1e1e1e;
+}
+
+.inspector-section-header {
+  padding: 6px 10px;
+  background: #232323;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.inspector-section-header:hover {
+  background: #2a2a2a;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  color: #aaa;
+}
+
+.inspector-section-content {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #1e1e1e;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.field-row label {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.number-input-wrapper {
+  display: flex;
+  border: 1px solid #333;
+  background: #111;
+}
+
+.number-input-wrapper input {
+  width: 65px;
+  background: transparent;
+  border: none;
+  color: #eee;
+  padding: 4px 6px;
+  outline: none;
+  font-size: 12px;
+}
+
+.number-controls {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #333;
+}
+
+.number-controls button {
+  background: #222;
+  border: none;
+  color: #aaa;
+  font-size: 9px;
+  height: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.number-controls button:hover {
+  background: #333;
+  color: #fff;
+}
+
+.field-row input,
+.field-row select {
+  background: #111;
+  border: 1px solid #333;
+  color: #eee;
+  padding: 4px 6px;
+  width: 150px;
+  font-size: 12px;
+}
+
+.field-row input:focus,
+.field-row select:focus {
+  border-color: #555;
+  outline: none;
+}
+
+.vector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vector-section-title {
+  font-size: 12px;
+  color: #bbb;
+  margin-bottom: 2px;
+}
+
+.axis-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.axis-label {
+  width: 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.axis-x { color: #ff5a5a; }
+.axis-y { color: #5aff5a; }
+.axis-z { color: #5aaaff; }
+
+.axis-input-wrapper {
+  flex: 1;
+}
+
+.axis-input-wrapper input {
+  width: 100%;
+  background: #111;
+  border: 1px solid #333;
+  color: #eee;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.axis-input-wrapper input:focus {
+  border-color: #555;
+  outline: none;
+}
+
+.resize-vertical {
+  cursor: col-resize;
+  background: #1b1b1b;
+}
+
+.resize-vertical:hover {
+  background: #333;
+}
+
+.resize-horizontal {
+  cursor: row-resize;
+  background: #1b1b1b;
+}
+
+.resize-horizontal:hover {
+  background: #333;
+}
+
+.console-panel {
+  background: #161616;
+  border-top: 1px solid #333;
+  font-family: monospace;
+  font-size: 12px;
+  color: #ccc;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.console-title {
+  margin: 0;
+  padding: 0px 10px;
+  font-size: 14px;
+  background: #1c1c1c;
+  border-bottom: 1px solid #333;
+  display: inline-block;
+  width: fit-content;
+  border-right: 1px solid #333;
+}
+
+.console-content {
+  padding: 8px;
+  overflow: auto;
+  flex: 1;
+}
+
+.console-panel.collapsed {
+  height: 32px;
+}
+
+.console-panel.collapsed .console-content {
+  display: none;
 }
