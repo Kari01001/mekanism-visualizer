@@ -4,6 +4,7 @@ export const usePanelLayout = () => {
   const [leftWidth, setLeftWidth] = useState(240);
   const [rightWidth, setRightWidth] = useState(300);
   const [consoleHeight, setConsoleHeight] = useState(180);
+  const [sceneHeight, setSceneHeight] = useState(300);
 
   const MIN_LEFT = 180;
   const MAX_LEFT = 500;
@@ -16,7 +17,10 @@ export const usePanelLayout = () => {
   const MIN_CONSOLE = 120;
   const MAX_CONSOLE = 400;
   const COLLAPSE_CONSOLE = 60;
-  const HANDLE_HEIGHT = 28; // výška mini režimu
+  const HANDLE_HEIGHT = 28;
+
+  const MIN_SCENE = 120;
+  const MAX_SCENE = 800;
 
   const startLeftResize = (e: React.MouseEvent) => {
     const startX = e.clientX;
@@ -94,13 +98,36 @@ export const usePanelLayout = () => {
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   };
+  const startSceneResize = (e: React.MouseEvent) => {
+    const startY = e.clientY;
+    const startHeight = sceneHeight;
 
+    const onMove = (ev: MouseEvent) => {
+      const delta = ev.clientY - startY;
+      const next = startHeight + delta;
+
+      setSceneHeight(
+        Math.max(MIN_SCENE, Math.min(MAX_SCENE, next))
+      );
+    };
+
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+  
   return {
     leftWidth,
     rightWidth,
     consoleHeight,
+    sceneHeight,
     startLeftResize,
     startRightResize,
     startConsoleResize,
+    startSceneResize
   };
 };

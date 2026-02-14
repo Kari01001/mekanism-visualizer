@@ -21,9 +21,11 @@ const App = () => {
     leftWidth,
     rightWidth,
     consoleHeight,
+    sceneHeight,
     startLeftResize,
     startRightResize,
     startConsoleResize,
+    startSceneResize,
   } = usePanelLayout();
 
   useEffect(() => {
@@ -107,10 +109,28 @@ const App = () => {
             <button>Rotate</button>
           </div>
 
-          <h3>Scene</h3>
-          <SceneTreeView />
-        </div>
+          <div
+            className="panel-section"
+            style={{ height: `${sceneHeight}px` }}
+          >
+            <div className="panel-section-header">Scene</div>
+            <div className="scene-tree-container">
+              <SceneTreeView />
+            </div>
+          </div>
 
+          <div
+            className="resize-horizontal"
+            onMouseDown={startSceneResize}
+          />
+
+          <div className="panel-section" style={{ flex: 1 }}>
+            <div className="panel-section-header">Assets</div>
+            <div className="assets-container">
+              Assets will go here...
+            </div>
+          </div>
+        </div>
         <div
           className="resize-vertical"
           onMouseDown={startLeftResize}
@@ -134,15 +154,7 @@ const App = () => {
             onMouseDown={startConsoleResize}
           />
 
-          <div
-  className={[
-    "console-panel",
-    consoleHeight <= 30 && "collapsed"
-  ]
-    .filter(Boolean)
-    .join(" ")}
->
-
+          <div className={["console-panel", consoleHeight <= 30 && "collapsed"].filter(Boolean).join(" ")}>
             <h4 className="console-title">Console</h4>
             <div className="console-content">
               Engine logs will appear here...
