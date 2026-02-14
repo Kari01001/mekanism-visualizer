@@ -81,7 +81,6 @@ export default function initScene(
     emissiveIntensity: 0.35,
   });
 
-
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
 

@@ -7,6 +7,12 @@ interface Props {
   isLast: boolean;
   ancestorLines: boolean[];
   isRoot?: boolean;
+  openContextMenu: (menu: {
+    x: number;
+    y: number;
+    targetId: string;
+    type: "group" | "object";
+  }) => void;
 }
 
 const SceneTreeNode = ({
@@ -14,6 +20,7 @@ const SceneTreeNode = ({
   isLast,
   ancestorLines,
   isRoot = false,
+  openContextMenu,
 }: Props) => {
   const selectBlock = useBlocksStore((s) => s.selectBlock);
   const selectedBlockId = useBlocksStore((s) => s.selectedBlockId);
@@ -23,13 +30,14 @@ const SceneTreeNode = ({
   const hasChildren =
     node.type === "group" && node.children.length > 0;
 
-  const renderPrefix = () => ancestorLines.map((hasLine, i) => (
-    <span
-      key={i}
-      className={`tree-line ${hasLine ? "active" : ""}`}
-    />
-  ));
-  
+  const renderPrefix = () =>
+    ancestorLines.map((hasLine, i) => (
+      <span
+        key={i}
+        className={`tree-line ${hasLine ? "active" : ""}`}
+      />
+    ));
+
   const renderConnector = () => (
     <span
       className={`tree-connector ${isLast ? "last" : ""}`}
@@ -44,6 +52,17 @@ const SceneTreeNode = ({
           onClick={() =>
             hasChildren && setExpanded((e) => !e)
           }
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            openContextMenu({
+              x: e.clientX,
+              y: e.clientY,
+              targetId: node.id,
+              type: "group",
+            });
+          }}
         >
           {renderPrefix()}
           {!isRoot ? renderConnector() : <span className="tree-spacer" />}
@@ -70,6 +89,7 @@ const SceneTreeNode = ({
                   ...ancestorLines,
                   !isLast,
                 ]}
+                openContextMenu={openContextMenu}
               />
             );
           })}
@@ -80,13 +100,22 @@ const SceneTreeNode = ({
   return (
     <div
       className={`tree-row ${
-        selectedBlockId === node.blockId
-          ? "selected"
-          : ""
+        selectedBlockId === node.blockId ? "selected" : ""
       }`}
       onClick={(e) => {
         e.stopPropagation();
         selectBlock(node.blockId);
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        openContextMenu({
+          x: e.clientX,
+          y: e.clientY,
+          targetId: node.id,
+          type: "object",
+        });
       }}
     >
       {renderPrefix()}

@@ -67,7 +67,6 @@ const Inspector = () => {
                 value={block.position}
                 step={1}
                 onChange={(axis, v) => {
-                  // logiku doděláme později
                 }}
               />
             </Collapsible>
@@ -78,7 +77,6 @@ const Inspector = () => {
                 value={block.rotation}
                 step={90}
                 onChange={(axis, v) => {
-                  // logiku doděláme později
                 }}
               />
             </Collapsible>

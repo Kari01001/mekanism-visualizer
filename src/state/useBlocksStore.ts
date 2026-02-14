@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { SceneGroupNode } from "../models/sceneTree";
 import type { BlockInstance, BlockType, Vec3 } from "../models/blocks";
-import { insertNode, removeNodeById } from "../scene/sceneTreeUtils";
+import { insertNode, removeNodeById } from "../components/SceneTree/sceneTreeUtils";
 
 const isSamePosition = (
   a: { x: number; y: number; z: number },
@@ -64,7 +64,7 @@ export const useBlocksStore = create<BlocksState>((set, get) => ({
   
   selectedBlockId: null,
 
-  mode: "edit",
+  mode: "view",
   setMode: (mode) => set({ mode }),
 
   transformMode: "none",

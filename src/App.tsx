@@ -17,6 +17,11 @@ const App = () => {
   const selectBlock = useBlocksStore((s) => s.selectBlock);
   const loadProject = useBlocksStore((s) => s.loadProject);
 
+  const mode = useBlocksStore((s) => s.mode);
+  const transformMode = useBlocksStore((s) => s.transformMode);
+  const setMode = useBlocksStore((s) => s.setMode);
+  const setTransformMode = useBlocksStore((s) => s.setTransformMode);
+
   const {
     leftWidth,
     rightWidth,
@@ -104,10 +109,45 @@ const App = () => {
       <div className="layout-main" style={{gridTemplateColumns: `${leftWidth}px 5px 1fr 5px ${rightWidth}px`,}}>
         <div className="panel-left">
           <div className="mode-toolbar">
-            <button>Orbit</button>
-            <button>Move</button>
-            <button>Rotate</button>
+            <button
+              className={mode === "view" ? "active" : ""}
+              onClick={() => {
+                setMode("view");
+                setTransformMode("none");
+              }}
+            >
+              Orbit
+            </button>
+
+            <button
+              className={
+                mode === "edit" && transformMode === "move"
+                  ? "active"
+                  : ""
+              }
+              onClick={() => {
+                setMode("edit");
+                setTransformMode("move");
+              }}
+            >
+              Move
+            </button>
+
+            <button
+              className={
+                mode === "edit" && transformMode === "rotate"
+                  ? "active"
+                  : ""
+              }
+              onClick={() => {
+                setMode("edit");
+                setTransformMode("rotate");
+              }}
+            >
+              Rotate
+            </button>
           </div>
+
 
           <div
             className="panel-section"
