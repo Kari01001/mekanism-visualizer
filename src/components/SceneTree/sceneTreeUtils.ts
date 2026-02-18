@@ -71,3 +71,54 @@ export function removeNodeById(
       ),
   };
 }
+
+export function renameGroupById(
+  root: SceneGroupNode,
+  groupId: string,
+  name: string
+): SceneGroupNode {
+  if (root.id === groupId) {
+    return { ...root, name };
+  }
+
+  return {
+    ...root,
+    children: root.children.map((child) =>
+      child.type === "group"
+        ? renameGroupById(child, groupId, name)
+        : child
+    ),
+  };
+}
+
+export function collectBlockIds(node: SceneTreeNode): Set<string> {
+  if (node.type === "block") {
+    return new Set([node.blockId]);
+  }
+
+  const ids = new Set<string>();
+
+  node.children.forEach((child) => {
+    collectBlockIds(child).forEach((id) => ids.add(id));
+  });
+
+  return ids;
+}
+
+export function findParentGroupId(
+  root: SceneGroupNode,
+  nodeId: string
+): string | null {
+  for (const child of root.children) {
+    if (child.id === nodeId) {
+      return root.id;
+    }
+
+    if (child.type === "group") {
+      const found = findParentGroupId(child, nodeId);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}

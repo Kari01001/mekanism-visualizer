@@ -11,6 +11,7 @@ export type BlockType =
 
 export interface BlockInstance {
   id: string;
+  name?: string;
   type: BlockType;
   position: Vec3;
   rotation: {x: number; y: number;   z: number;};

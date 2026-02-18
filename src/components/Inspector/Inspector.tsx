@@ -66,7 +66,9 @@ const Inspector = () => {
                 label=""
                 value={block.position}
                 step={1}
-                onChange={(axis, v) => {
+                onChange={(_axis, _v) => {
+                  void _axis;
+                  void _v;
                 }}
               />
             </Collapsible>
@@ -76,7 +78,9 @@ const Inspector = () => {
                 label=""
                 value={block.rotation}
                 step={90}
-                onChange={(axis, v) => {
+                onChange={(_axis, _v) => {
+                  void _axis;
+                  void _v;
                 }}
               />
             </Collapsible>
@@ -92,7 +96,7 @@ const Inspector = () => {
 
             <div className="field-row">
               <label>Name</label>
-              <input defaultValue={block.id} />
+              <input value={block.name ?? block.id} readOnly />
             </div>
 
             <div className="field-row">
