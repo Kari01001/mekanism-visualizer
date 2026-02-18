@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BLOCK_DEFINITIONS, type BlockType } from "../../models/blocks";
+import type { BlockType } from "../../models/blocks";
 import type { SceneGroupNode } from "../../models/sceneTree";
+import { useBlockTypesStore } from "../../state/useBlockTypesStore";
 import { useBlocksStore } from "../../state/useBlocksStore";
 import SceneTreeNode from "./SceneTreeNode";
 import {
@@ -94,6 +95,8 @@ const SceneTreeView = () => {
   const removeBlock = useBlocksStore((s) => s.removeBlock);
   const renameBlock = useBlocksStore((s) => s.renameBlock);
   const selectBlock = useBlocksStore((s) => s.selectBlock);
+  const typeDefinitions = useBlockTypesStore((s) => s.definitions);
+  const getTypeDefinition = useBlockTypesStore((s) => s.getDefinition);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [editing, setEditing] = useState<EditingState | null>(null);
@@ -101,9 +104,14 @@ const SceneTreeView = () => {
 
   const menuRef = useRef<HTMLDivElement | null>(null);
 
+  const visibleTypeDefinitions = useMemo(
+    () => typeDefinitions.filter((definition) => !definition.internal),
+    [typeDefinitions]
+  );
+
   const blockTypeOptions = useMemo(
-    () => Object.keys(BLOCK_DEFINITIONS) as BlockType[],
-    []
+    () => visibleTypeDefinitions.map((definition) => definition.id),
+    [visibleTypeDefinitions]
   );
 
   const blockDisplayNames = useMemo(
@@ -250,7 +258,7 @@ const SceneTreeView = () => {
 
     setAddObjectModal({
       targetGroupId,
-      type: blockTypeOptions[0] ?? "basic_block",
+      type: blockTypeOptions[0] ?? "unknown_block",
       name: defaultName,
       position: defaultPosition,
       error: null,
@@ -391,11 +399,17 @@ const SceneTreeView = () => {
                   )
                 }
               >
-                {blockTypeOptions.map((type) => (
-                  <option key={type} value={type}>
-                    {BLOCK_DEFINITIONS[type].displayName}
+                {visibleTypeDefinitions.length > 0 ? (
+                  visibleTypeDefinitions.map((definition) => (
+                    <option key={definition.id} value={definition.id}>
+                      {definition.displayName}
+                    </option>
+                  ))
+                ) : (
+                  <option value="unknown_block">
+                    {getTypeDefinition("unknown_block").displayName}
                   </option>
-                ))}
+                )}
               </select>
             </div>
 

@@ -4,10 +4,7 @@ export interface Vec3 {
   z: number;
 }
 
-export type BlockType =
-  | "basic_block"
-  | "generator_basic"
-  | "cable_basic";
+export type BlockType = string;
 
 export interface BlockInstance {
   id: string;
@@ -19,25 +16,8 @@ export interface BlockInstance {
 }
 
 export interface BlockDefinition {
-  type: BlockType;
+  id: BlockType;
   displayName: string;
   color: number;
+  internal?: boolean;
 }
-
-export const BLOCK_DEFINITIONS: Record<BlockType, BlockDefinition> = {
-  basic_block: {
-    type: "basic_block",
-    displayName: "Basic Block",
-    color: 0x2ecc71,
-  },
-  generator_basic: {
-    type: "generator_basic",
-    displayName: "Basic Generator",
-    color: 0xf1c40f,
-  },
-  cable_basic: {
-    type: "cable_basic",
-    displayName: "Basic Cable",
-    color: 0x3498db,
-  },
-};

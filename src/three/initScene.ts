@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { BLOCK_DEFINITIONS } from "../models/blocks";
 import type { BlockInstance, BlockType } from "../models/blocks";
 import { MoveGizmo } from "./gizmos/MoveGizmo";
+import { getBlockTypeDefinition, useBlockTypesStore } from "../state/useBlockTypesStore";
 import { useBlocksStore } from "../state/useBlocksStore";
 import { RotateGizmo } from "./gizmos/RotateGizmo";
 
@@ -69,6 +69,7 @@ export default function initScene(
   scene.add(grid);
   const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
   const materialCache = new Map<BlockType, THREE.MeshStandardMaterial>();
+  let blockTypesRevision = useBlockTypesStore.getState().revision;
 
   const highlightMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
@@ -86,23 +87,66 @@ export default function initScene(
 
   const blockMeshes = new Map<string, THREE.Mesh>();
   let selectedBlockId: string | null = null;
+  let hoveredBlockId: string | null = null;
 
-  const createBlockMesh = (instance: BlockInstance) => {
-    const def = BLOCK_DEFINITIONS[instance.type];
+  const getBaseMaterial = (typeId: BlockType) => {
+    let material = materialCache.get(typeId);
 
-    let material = materialCache.get(instance.type);
-    
     if (!material) {
+      const definition = getBlockTypeDefinition(typeId);
       material = new THREE.MeshStandardMaterial({
-      color: def.color,
-      metalness: 0.1,
-      roughness: 0.8,
+        color: definition.color,
+        metalness: 0.1,
+        roughness: 0.8,
       });
 
-      materialCache.set(instance.type, material);
+      materialCache.set(typeId, material);
     }
 
+    return material;
+  };
 
+  const applyBaseMaterial = (mesh: THREE.Mesh, typeId: BlockType) => {
+    mesh.material = getBaseMaterial(typeId);
+  };
+
+  const disposeMarkerChildren = (mesh: THREE.Mesh) => {
+    mesh.children.forEach((child) => {
+      const childMesh = child as THREE.Mesh;
+      childMesh.geometry?.dispose();
+
+      if (Array.isArray(childMesh.material)) {
+        childMesh.material.forEach((material) => material.dispose());
+      } else {
+        childMesh.material?.dispose();
+      }
+    });
+  };
+
+  const refreshAllBaseMaterials = () => {
+    materialCache.forEach((material) => material.dispose());
+    materialCache.clear();
+
+    blockMeshes.forEach((mesh, id) => {
+      const type = mesh.userData.type as BlockType | undefined;
+      if (!type) return;
+
+      if (id === selectedBlockId) {
+        mesh.material = highlightMaterial;
+        return;
+      }
+
+      if (id === hoveredBlockId) {
+        mesh.material = hoverMaterial;
+        return;
+      }
+
+      applyBaseMaterial(mesh, type);
+    });
+  };
+
+  const createBlockMesh = (instance: BlockInstance) => {
+    const material = getBaseMaterial(instance.type);
     const mesh = new THREE.Mesh(blockGeometry, material);
     const markerGeometry = new THREE.BoxGeometry(0.2, 0.05, 0.6);
     const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
@@ -150,6 +194,12 @@ export default function initScene(
       renderer.setSize(width, height, false);
     }
 
+    const currentRevision = useBlockTypesStore.getState().revision;
+    if (currentRevision !== blockTypesRevision) {
+      blockTypesRevision = currentRevision;
+      refreshAllBaseMaterials();
+    }
+
     const store = useBlocksStore.getState();
     const selected = store.blocks.find((b): b is BlockInstance => b.id === store.selectedBlockId) ?? null;
 
@@ -167,7 +217,6 @@ export default function initScene(
     controls.update();
     renderer.render(scene, camera);
   };
-  let hoveredBlockId: string | null = null;
 
   const handlePointerDown = (event: PointerEvent) => {
     const rect = renderer.domElement.getBoundingClientRect();
@@ -211,7 +260,7 @@ export default function initScene(
       const prev = blockMeshes.get(hoveredBlockId);
       if (prev && hoveredBlockId !== selectedBlockId) {
         const type = prev.userData.type as BlockType;
-        prev.material = materialCache.get(type)!;
+        applyBaseMaterial(prev, type);
       }
     }
 
@@ -238,15 +287,15 @@ export default function initScene(
 
       renderer.dispose();
       blockGeometry.dispose();
+      materialCache.forEach((material) => material.dispose());
+      materialCache.clear();
+      highlightMaterial.dispose();
+      hoverMaterial.dispose();
       moveGizmo.dispose();
       rotateGizmo.dispose();
 
       blockMeshes.forEach((mesh) => {
-        if (Array.isArray(mesh.material)) {
-          mesh.material.forEach((m) => m.dispose());
-        } else {
-          mesh.material.dispose();
-        }
+        disposeMarkerChildren(mesh);
       });
       blockMeshes.clear();
       
@@ -256,11 +305,7 @@ export default function initScene(
       const existing = blockMeshes.get(instance.id);
       if (existing) {
         scene.remove(existing);
-        if (Array.isArray(existing.material)) {
-          existing.material.forEach((m) => m.dispose());
-        } else {
-          existing.material.dispose();
-        }
+        disposeMarkerChildren(existing);
         blockMeshes.delete(instance.id);
       }
 
@@ -272,11 +317,7 @@ export default function initScene(
       if (!mesh) return;
 
       scene.remove(mesh);
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach((m) => m.dispose());
-      } else {
-        mesh.material.dispose();
-      }
+      disposeMarkerChildren(mesh);
       blockMeshes.delete(id);
     },
     setSelectedBlock: (id: string | null) => {
@@ -285,7 +326,7 @@ export default function initScene(
         if (prevMesh) {
           const prevType = (prevMesh.userData.type as BlockType) || null;
           if (prevType) {
-          prevMesh.material = materialCache.get(prevType)!;
+            applyBaseMaterial(prevMesh, prevType);
           }
         }
       }

@@ -1,8 +1,12 @@
 import { useEffect, useRef } from "react";
 import initScene, { type SceneAPI } from "./three/initScene";
 import { useBlocksStore } from "./state/useBlocksStore";
+import { useBlockTypesStore } from "./state/useBlockTypesStore";
+import { logInfo } from "./state/useConsoleStore";
 import Inspector from "./components/Inspector/Inspector";
 import SceneTreeView from "./components/SceneTree/SceneTreeView";
+import BlockTypeManager from "./components/BlockTypeManager";
+import ConsolePanel from "./components/ConsolePanel";
 import type { ProjectData } from "./models/project";
 import defaultProject from "./data/defaultProject.json";
 import { usePanelLayout } from "./utils/usePanelLayout";
@@ -11,11 +15,13 @@ const App = () => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<SceneAPI | null>(null);
   const renderedIdsRef = useRef<Set<string>>(new Set());
+  const didLogProjectLoadRef = useRef(false);
 
   const blocks = useBlocksStore((s) => s.blocks);
   const selectedBlockId = useBlocksStore((s) => s.selectedBlockId);
   const selectBlock = useBlocksStore((s) => s.selectBlock);
   const loadProject = useBlocksStore((s) => s.loadProject);
+  const initializeBuiltInTypes = useBlockTypesStore((s) => s.initializeBuiltInTypes);
 
   const mode = useBlocksStore((s) => s.mode);
   const transformMode = useBlocksStore((s) => s.transformMode);
@@ -34,11 +40,20 @@ const App = () => {
   } = usePanelLayout();
 
   useEffect(() => {
+    initializeBuiltInTypes();
+  }, [initializeBuiltInTypes]);
+
+  useEffect(() => {
     loadProject(defaultProject as ProjectData);
+    if (!didLogProjectLoadRef.current) {
+      didLogProjectLoadRef.current = true;
+      logInfo("Project", "Loaded default project.");
+    }
   }, [loadProject]);
 
   useEffect(() => {
     if (!mountRef.current) return;
+    const renderedIds = renderedIdsRef.current;
 
     const api = initScene(
       mountRef.current,
@@ -51,7 +66,7 @@ const App = () => {
     return () => {
       api.cleanup();
       sceneRef.current = null;
-      renderedIdsRef.current.clear();
+      renderedIds.clear();
     };
   }, [selectBlock]);
 
@@ -167,7 +182,7 @@ const App = () => {
           <div className="panel-section" style={{ flex: 1 }}>
             <div className="panel-section-header">Assets</div>
             <div className="assets-container">
-              Assets will go here...
+              <BlockTypeManager />
             </div>
           </div>
         </div>
@@ -196,9 +211,7 @@ const App = () => {
 
           <div className={["console-panel", consoleHeight <= 30 && "collapsed"].filter(Boolean).join(" ")}>
             <h4 className="console-title">Console</h4>
-            <div className="console-content">
-              Engine logs will appear here...
-            </div>
+            <ConsolePanel />
           </div>
         </div>
         <div

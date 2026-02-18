@@ -476,9 +476,63 @@ body {
 }
 
 .console-content {
-  padding: 8px;
+  padding: 6px;
   overflow: auto;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.console-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.console-toolbar button {
+  background: #222;
+  border: 1px solid #3b3b3b;
+  color: #ddd;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.console-toolbar button:hover {
+  background: #323232;
+}
+
+.console-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.console-entry {
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.console-meta {
+  color: #8f8f8f;
+  margin-right: 6px;
+}
+
+.console-entry.level-info .console-message {
+  color: #d0d0d0;
+}
+
+.console-entry.level-warn .console-message {
+  color: #f6d57b;
+}
+
+.console-entry.level-error .console-message {
+  color: #ff9a9a;
+}
+
+.console-empty {
+  color: #7f7f7f;
+  font-style: italic;
 }
 
 .console-panel.collapsed {
@@ -526,6 +580,82 @@ body {
   font-size: 12px;
   color: #777;
   padding: 6px;
+}
+
+.block-type-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.assets-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.assets-actions button {
+  background: #2a2a2a;
+  border: 1px solid #3b3b3b;
+  color: #ddd;
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.assets-actions button:hover {
+  background: #383838;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.assets-count {
+  color: #9c9c9c;
+}
+
+.block-type-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.block-type-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1c1c1c;
+  border: 1px solid #2e2e2e;
+  padding: 6px;
+}
+
+.block-type-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.block-type-text {
+  min-width: 0;
+}
+
+.block-type-name {
+  color: #ddd;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.block-type-id {
+  color: #8f8f8f;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.assets-empty {
+  color: #7f7f7f;
+  font-style: italic;
 }
 
 .context-menu {
