@@ -14,6 +14,22 @@ const isSamePosition = (
   b: { x: number; y: number; z: number }
 ) => a.x === b.x && a.y === b.y && a.z === b.z;
 
+const syncIdCounter = (blocks: BlockInstance[]) => {
+  let max = 0;
+
+  blocks.forEach((block) => {
+    const match = /^block-(\d+)$/.exec(block.id);
+    if (!match) return;
+
+    const numericId = Number.parseInt(match[1], 10);
+    if (Number.isFinite(numericId)) {
+      max = Math.max(max, numericId);
+    }
+  });
+
+  idCounter = Math.max(idCounter, max + 1);
+};
+
 interface BlocksState {
   blocks: BlockInstance[];
   sceneTree: SceneGroupNode;
@@ -48,6 +64,7 @@ interface BlocksState {
   addBlockToGroup: (groupId: string, blockId: string) => void;
 
   moveBlock: (id: string, delta: { x?: number; y?: number; z?: number }) => void;
+  setBlockPosition: (id: string, position: { x: number; y: number; z: number }) => void;
   rotateBlockAxis: (id: string, axis: "x" | "y" | "z", delta: 90 | -90) => void;
   setBlockRotation: (id: string, rotation: { x: number; y: number; z: number }) => void;
 
@@ -147,6 +164,18 @@ export const useBlocksStore = create<BlocksState>((set, get) => ({
                 y: b.position.y + (delta.y ?? 0),
                 z: b.position.z + (delta.z ?? 0),
               },
+            }
+          : b
+      ),
+    })),
+
+  setBlockPosition: (id, position) =>
+    set((state) => ({
+      blocks: state.blocks.map((b) =>
+        b.id === id
+          ? {
+              ...b,
+              position,
             }
           : b
       ),
@@ -252,13 +281,18 @@ export const useBlocksStore = create<BlocksState>((set, get) => ({
 
       newBlocks.forEach((block) => {
         const parentId = block.parentGroupId ?? "root";
+        const nodeId = `node-${block.id}`;
 
-        newTree = insertNode(newTree, parentId, {
-          id: `node-${block.id}`,
-          type: "block",
-          blockId: block.id,
-        });
+        if (!findNodeById(newTree, nodeId)) {
+          newTree = insertNode(newTree, parentId, {
+            id: nodeId,
+            type: "block",
+            blockId: block.id,
+          });
+        }
       });
+
+      syncIdCounter(newBlocks);
 
       return {
         blocks: newBlocks,
@@ -273,13 +307,18 @@ export const useBlocksStore = create<BlocksState>((set, get) => ({
 
       project.blocks.forEach((block) => {
         const parentId = block.parentGroupId ?? "root";
+        const nodeId = `node-${block.id}`;
 
-        newTree = insertNode(newTree, parentId, {
-          id: `node-${block.id}`,
-          type: "block",
-          blockId: block.id,
-        });
+        if (!findNodeById(newTree, nodeId)) {
+          newTree = insertNode(newTree, parentId, {
+            id: nodeId,
+            type: "block",
+            blockId: block.id,
+          });
+        }
       });
+
+      syncIdCounter(project.blocks);
 
       return {
         sceneTree: newTree,
@@ -295,9 +334,11 @@ export const useBlocksStore = create<BlocksState>((set, get) => ({
 
   importProject: (data: string) => {
     const parsed = JSON.parse(data);
+    const nextBlocks = parsed.blocks ?? [];
+    syncIdCounter(nextBlocks);
 
     set({
-      blocks: parsed.blocks ?? [],
+      blocks: nextBlocks,
       sceneTree: parsed.sceneTree ?? {
         id: "root",
         type: "group",

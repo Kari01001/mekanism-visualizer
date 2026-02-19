@@ -30,7 +30,10 @@ export default function initScene(
   );
   camera.position.set(6, 6, 6);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    preserveDrawingBuffer: true,
+  });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(mountEl.clientWidth, mountEl.clientHeight, false);
 

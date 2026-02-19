@@ -21,6 +21,7 @@ body {
   border-bottom: 1px solid #333;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 12px;
   font-size: 14px;
 }
@@ -46,22 +47,55 @@ body {
   left: 0;
   background: #222;
   border: 1px solid #333;
-  min-width: 120px;
+  min-width: 170px;
   display: none;
   flex-direction: column;
   z-index: 1000;
+  padding: 4px 0;
 }
 
 .menu-item:hover .dropdown {
   display: flex;
 }
 
-.dropdown div {
+.dropdown-action {
+  border: 0;
+  background: transparent;
+  color: #ddd;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
   padding: 6px 10px;
 }
 
-.dropdown div:hover {
+.dropdown-action:hover {
   background: #333;
+}
+
+.dropdown-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.dropdown-action:disabled:hover {
+  background: transparent;
+}
+
+.dropdown-action.danger {
+  color: #ff9f9f;
+}
+
+.dropdown-separator {
+  height: 1px;
+  background: #3a3a3a;
+  margin: 4px 0;
+}
+
+.topbar-status {
+  color: #bcbcbc;
+  font-size: 12px;
+  font-family: monospace;
+  white-space: nowrap;
 }
 
 .layout-main {
@@ -124,9 +158,12 @@ body {
 }
 
 .tab {
+  border: 0;
+  background: transparent;
   padding: 6px 12px;
   cursor: pointer;
   color: #aaa;
+  font-size: 13px;
 }
 
 .tab.active {
@@ -134,9 +171,65 @@ body {
   color: white;
 }
 
+.canvas-stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .canvas-wrapper {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   will-change: width, height;
+}
+
+.canvas-wrapper.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.preview-panel {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  background: #121212;
+  padding: 10px;
+  gap: 10px;
+}
+
+.preview-shot-wrap {
+  border: 1px solid #2e2e2e;
+  background: #0e0e0e;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.preview-shot {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.preview-placeholder {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #8b8b8b;
+  font-size: 12px;
+}
+
+.preview-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px 14px;
+  font-size: 12px;
+  color: #d2d2d2;
+  border: 1px solid #2e2e2e;
+  background: #171717;
+  padding: 8px 10px;
 }
 
 .console-panel {
@@ -433,6 +526,17 @@ body {
 .axis-input-wrapper input:focus {
   border-color: #555;
   outline: none;
+}
+
+input[type="number"].no-number-arrows::-webkit-outer-spin-button,
+input[type="number"].no-number-arrows::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"].no-number-arrows {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .resize-vertical {
