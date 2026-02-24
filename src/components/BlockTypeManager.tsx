@@ -1,8 +1,53 @@
 import { useMemo, useRef, type ChangeEvent } from "react";
 import { useBlockTypesStore } from "../state/useBlockTypesStore";
-import { logError } from "../state/useConsoleStore";
+import { logError, logInfo, logWarn } from "../state/useConsoleStore";
 
 const SOURCE = "BlockTypes";
+type ImportKind = "json" | "png" | "jar" | "unknown";
+
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
+
+const hasPrefix = (bytes: Uint8Array, prefix: readonly number[]) =>
+  bytes.length >= prefix.length &&
+  prefix.every((value, index) => bytes[index] === value);
+
+const isZipSignature = (bytes: Uint8Array) =>
+  hasPrefix(bytes, [0x50, 0x4b, 0x03, 0x04]) ||
+  hasPrefix(bytes, [0x50, 0x4b, 0x05, 0x06]) ||
+  hasPrefix(bytes, [0x50, 0x4b, 0x07, 0x08]);
+
+const getFileExtension = (name: string) => {
+  const dot = name.lastIndexOf(".");
+  if (dot < 0) return "";
+  return name.slice(dot + 1).toLowerCase();
+};
+
+const looksLikeJson = (bytes: Uint8Array) => {
+  for (const byte of bytes) {
+    if (byte === 0x20 || byte === 0x09 || byte === 0x0a || byte === 0x0d) {
+      continue;
+    }
+
+    return byte === 0x7b || byte === 0x5b; // { or [
+  }
+
+  return false;
+};
+
+const detectImportKind = async (file: File): Promise<ImportKind> => {
+  const extension = getFileExtension(file.name);
+
+  if (extension === "json") return "json";
+  if (extension === "png") return "png";
+  if (extension === "jar" || extension === "zip") return "jar";
+
+  const header = new Uint8Array(await file.slice(0, 32).arrayBuffer());
+  if (hasPrefix(header, PNG_SIGNATURE)) return "png";
+  if (isZipSignature(header)) return "jar";
+  if (looksLikeJson(header)) return "json";
+
+  return "unknown";
+};
 
 const BlockTypeManager = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -25,9 +70,35 @@ const BlockTypeManager = () => {
 
     if (!file) return;
 
+    const kind = await detectImportKind(file);
+
     try {
-      const content = await file.text();
-      importPackFromString(content, file.name);
+      if (kind === "json") {
+        const content = await file.text();
+        importPackFromString(content, file.name);
+        return;
+      }
+
+      if (kind === "png") {
+        logInfo(
+          SOURCE,
+          `Detected PNG texture "${file.name}". PNG texture import pipeline is next step.`
+        );
+        return;
+      }
+
+      if (kind === "jar") {
+        logInfo(
+          SOURCE,
+          `Detected archive "${file.name}" (jar/zip). Archive texture import pipeline is next step.`
+        );
+        return;
+      }
+
+      logWarn(
+        SOURCE,
+        `Unsupported import file "${file.name}". Use JSON, PNG or JAR/ZIP.`
+      );
     } catch {
       logError(SOURCE, `Failed to read "${file.name}".`);
     }
@@ -56,7 +127,7 @@ const BlockTypeManager = () => {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".json,application/json"
+        accept=".json,application/json,.png,image/png,.jar,.zip,application/java-archive,application/zip"
         className="hidden-file-input"
         onChange={handleFileChange}
       />
