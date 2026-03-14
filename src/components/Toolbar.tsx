@@ -5,6 +5,7 @@ const Toolbar = () => {
   const setTransformMode = useBlocksStore(s => s.setTransformMode);
   const mode = useBlocksStore(s => s.mode);
 
+  // View mode intentionally hides transform controls.
   if (mode !== "edit") return null;
 
   return (

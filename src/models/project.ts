@@ -9,8 +9,10 @@ export interface ProjectMeta {
 }
 
 export interface ProjectData {
+  // Optional for backward compatibility with older project files.
   meta?: ProjectMeta;
   sceneTree: SceneGroupNode;
   blocks: BlockInstance[];
+  // Optional embedded block types used to reproduce custom assets on load.
   embeddedBlockTypes?: BlockDefinition[];
 }

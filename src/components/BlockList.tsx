@@ -47,6 +47,7 @@ const BlockList = ({ mode }: Props) => {
                   cursor: "pointer",
                 }}
                 onClick={(e) => {
+                  // Keep row selection and delete action independent.
                   e.stopPropagation();
                   removeBlock(block.id);
                 }}

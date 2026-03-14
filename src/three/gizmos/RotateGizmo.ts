@@ -57,6 +57,13 @@ export class RotateGizmo {
     window.removeEventListener("pointerup", this.onPointerUp);
   }
 
+  private findSelectedMesh(scene: THREE.Scene, id: string) {
+    return scene.children.find((object): object is THREE.Mesh => {
+      const userData = object.userData as { blockId?: unknown } | undefined;
+      return typeof userData?.blockId === "string" && userData.blockId === id;
+    });
+  }
+
   private createRings() {
     const makeRing = (axis: Axis, color: number) => {
       const geo = new THREE.TorusGeometry(1.2, 0.04, 8, 64);
@@ -133,17 +140,14 @@ export class RotateGizmo {
     const delta = e.movementX * sensitivity;
 
     this.accumulated += delta;
-    const SNAP = Math.PI / 2
+    const SNAP = Math.PI / 2;
     if (Math.abs(this.accumulated) >= SNAP) {
       const delta = this.accumulated > 0 ? 90 : -90;
 
-      const scene = (this.group.parent as THREE.Scene);
+      const scene = this.group.parent as THREE.Scene;
       if (!scene) return;
 
-      const mesh = scene.children.find(
-        (o): o is THREE.Mesh =>
-        (o as any).userData?.blockId === id
-      );
+      const mesh = this.findSelectedMesh(scene, id);
 
       if (!mesh) return;
 
@@ -157,6 +161,7 @@ export class RotateGizmo {
 
       const q = new THREE.Quaternion().setFromAxisAngle(worldAxis, angleRad);
 
+      // Preview the snapped quarter-turn directly on the mesh while dragging.
       mesh.quaternion.premultiply(q);
       this.accumulated = 0;
     }
@@ -170,10 +175,7 @@ export class RotateGizmo {
 
     if (id) {
       const scene = this.group.parent as THREE.Scene;
-      const mesh = scene.children.find(
-      (o): o is THREE.Mesh =>
-        (o as any).userData?.blockId === id
-      );
+      const mesh = this.findSelectedMesh(scene, id);
 
       if (mesh) {
         const euler = new THREE.Euler().setFromQuaternion(
@@ -181,6 +183,7 @@ export class RotateGizmo {
           "XYZ"
         );
 
+        // Persist the previewed quaternion back into store-friendly degree values.
         store.setBlockRotation(id, {
           x: Math.round(THREE.MathUtils.radToDeg(euler.x)),
           y: Math.round(THREE.MathUtils.radToDeg(euler.y)),

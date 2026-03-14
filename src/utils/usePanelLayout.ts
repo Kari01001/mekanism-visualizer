@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 export const usePanelLayout = () => {
+  // Legacy layout state kept for older panel experiments.
   const [leftWidth, setLeftWidth] = useState(240);
   const [rightWidth, setRightWidth] = useState(300);
   const [consoleHeight, setConsoleHeight] = useState(180);
@@ -98,6 +99,7 @@ export const usePanelLayout = () => {
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   };
+
   const startSceneResize = (e: React.MouseEvent) => {
     const startY = e.clientY;
     const startHeight = sceneHeight;

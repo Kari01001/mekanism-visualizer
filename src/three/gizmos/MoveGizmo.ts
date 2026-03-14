@@ -62,20 +62,20 @@ export class MoveGizmo {
   }
 
   private createAxes() {
-    var data: [Axis, number, THREE.Vector3][] = [
+    const data: [Axis, number, THREE.Vector3][] = [
       ["x", 0xff0000, new THREE.Vector3(1, 0, 0)],
       ["y", 0x00ff00, new THREE.Vector3(0, 1, 0)],
       ["z", 0x0000ff, new THREE.Vector3(0, 0, 1)],
     ];
 
     data.forEach((item) => {
-      var axis = item[0];
-      var color = item[1];
-      var dir = item[2];
+      const axis = item[0];
+      const color = item[1];
+      const dir = item[2];
 
-      var geo = new THREE.CylinderGeometry(0.04, 0.04, 1, 8);
-      var mat = new THREE.MeshBasicMaterial({ color });
-      var mesh = new THREE.Mesh(geo, mat);
+      const geo = new THREE.CylinderGeometry(0.04, 0.04, 1, 8);
+      const mat = new THREE.MeshBasicMaterial({ color });
+      const mesh = new THREE.Mesh(geo, mat);
 
       mesh.position.copy(dir.clone().multiplyScalar(0.5));
       if (axis === "x") mesh.rotation.z = Math.PI / 2;
@@ -93,13 +93,13 @@ export class MoveGizmo {
   }
 
   private onPointerDown = (e: PointerEvent) => {
-    var store = useBlocksStore.getState();
+    const store = useBlocksStore.getState();
     if (store.mode !== "edit" || store.transformMode !== "move") return;
 
     this.setMouse(e);
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    var hits = this.raycaster.intersectObjects(this.group.children);
+    const hits = this.raycaster.intersectObjects(this.group.children);
     if (hits.length === 0) return;
 
     this.activeAxis = hits[0].object.userData.axis as Axis;
@@ -112,33 +112,34 @@ export class MoveGizmo {
   private onPointerMove = (e: PointerEvent) => {
     if (!this.dragging || this.activeAxis === null) return;
 
-    var store = useBlocksStore.getState();
-    var id = store.selectedBlockId;
+    const store = useBlocksStore.getState();
+    const id = store.selectedBlockId;
     if (!id) return;
 
     this.setMouse(e);
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    var normal =
+    const normal =
       this.activeAxis === "y"
         ? new THREE.Vector3(1, 0, 0)
         : new THREE.Vector3(0, 1, 0);
 
-    var plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
       normal,
       this.group.position
     );
 
-    var hit = new THREE.Vector3();
+    const hit = new THREE.Vector3();
     if (!this.raycaster.ray.intersectPlane(plane, hit)) return;
 
-    var rawDelta =
+    const rawDelta =
       hit[this.activeAxis] - this.group.position[this.activeAxis];
 
-    var snapped =
+    const snapped =
       Math.round(rawDelta / this.SNAP) * this.SNAP;
 
     if (snapped !== 0) {
+      // Movement stays snapped to whole-block increments.
       store.moveBlock(id, { [this.activeAxis]: snapped });
     }
   };
@@ -152,7 +153,7 @@ export class MoveGizmo {
   };
 
   private setMouse(e: PointerEvent) {
-    var r = this.dom.getBoundingClientRect();
+    const r = this.dom.getBoundingClientRect();
     this.mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
     this.mouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
   }

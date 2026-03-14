@@ -28,6 +28,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
     set({
       meta,
       fileName,
+      // Loading a project defines the new baseline snapshot.
       dirty: false,
       lastSavedSnapshot: snapshot,
     }),
@@ -42,6 +43,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
   markDirtyFromSnapshot: (snapshot) =>
     set((state) => ({
+      // Dirty state is derived by comparing current snapshot to last persisted snapshot.
       dirty: snapshot !== state.lastSavedSnapshot,
     })),
 

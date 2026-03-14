@@ -33,6 +33,7 @@ export const useConsoleStore = create<ConsoleState>((set) => ({
 
       const merged = [...state.entries, next];
       return {
+        // Keep memory bounded while preserving most recent diagnostics.
         entries: merged.slice(-MAX_ENTRIES),
       };
     }),

@@ -1,5 +1,12 @@
 {
   "id": "cable_basic",
   "displayName": "Basic Cable",
-  "color": 3447003
+  "color": 3447003,
+  "renderMode": "conduit",
+  "connectTag": "energy",
+  "scale": {
+    "x": 0.375,
+    "y": 0.375,
+    "z": 0.375
+  }
 }

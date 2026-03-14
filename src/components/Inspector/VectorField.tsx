@@ -15,6 +15,7 @@ const VectorField = ({
 }) => {
   const handleAxisChange = (axis: "x" | "y" | "z", rawValue: string) => {
     if (readOnly || !onChange) return;
+    // Grid-based transforms stay integer in the current editor model.
     onChange(axis, parseInt(rawValue) || 0);
   };
 

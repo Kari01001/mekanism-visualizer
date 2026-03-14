@@ -1,9 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { BlockType } from "../../models/blocks";
+import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
+import {
+  BLOCK_FACES,
+  createConnectionMask,
+  type BlockConnectionMask,
+  type BlockConnectionMode,
+  type BlockType,
+} from "../../models/blocks";
 import type { SceneGroupNode } from "../../models/sceneTree";
 import { useBlockTypesStore } from "../../state/useBlockTypesStore";
 import { useBlocksStore } from "../../state/useBlocksStore";
-import SceneTreeNode from "./SceneTreeNode";
+import SceneTreeNode, { type SceneTreeDropPosition } from "./SceneTreeNode";
 import {
   findNodeById,
   findParentGroupId,
@@ -27,6 +33,7 @@ type EditingState = {
 type AddObjectModalState = {
   targetGroupId: string;
   type: BlockType;
+  typeFilter: string;
   name: string;
   position: {
     x: number;
@@ -36,8 +43,23 @@ type AddObjectModalState = {
   error: string | null;
 };
 
+type EditConnectionsModalState = {
+  blockId: string;
+  blockName: string;
+  mode: BlockConnectionMode;
+  mask: BlockConnectionMask;
+};
+
 const groupNamePattern = /^Group \((\d+)\)$/;
 const objectNamePattern = /^Object \((\d+)\)$/;
+const connectionDirectionLabels: Record<(typeof BLOCK_FACES)[number], string> = {
+  right: "Right (+X)",
+  left: "Left (-X)",
+  top: "Top (+Y)",
+  bottom: "Bottom (-Y)",
+  front: "Front (+Z)",
+  back: "Back (-Z)",
+};
 
 const getNextGroupName = (root: SceneGroupNode) => {
   let max = 0;
@@ -78,11 +100,66 @@ const findFreeSpawnPosition = (positions: { x: number; y: number; z: number }[])
   );
 
   let y = 0;
+  // New objects stack upward at origin until a free slot is found.
   while (occupied.has(`0:${y}:0`)) {
     y += 1;
   }
 
   return { x: 0, y, z: 0 };
+};
+
+const toGroupLabel = (value: string) =>
+  value
+    .split("/")
+    .flatMap((part) => part.split("_"))
+    .filter(Boolean)
+    .map((word) => word.slice(0, 1).toUpperCase() + word.slice(1))
+    .join(" / ");
+
+const getTypeGroupLabel = (typeId: string, explicitGroup?: string) => {
+  if (explicitGroup?.trim()) {
+    return toGroupLabel(explicitGroup.trim());
+  }
+
+  const segments = typeId.split("__");
+  if (segments.length > 1) {
+    return toGroupLabel(segments.slice(0, -1).join("/"));
+  }
+
+  return "General";
+};
+
+const filterTypeDefinitions = (
+  definitions: Array<{ id: string; displayName: string; group?: string }>,
+  filterText: string
+) => {
+  const normalized = filterText.trim().toLowerCase();
+  if (normalized === "") return definitions;
+
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return definitions;
+
+  return definitions.filter((definition) => {
+    const haystack = `${definition.displayName} ${definition.id} ${definition.group ?? ""}`.toLowerCase();
+    return tokens.every((token) => haystack.includes(token));
+  });
+};
+
+const normalizeConnectionsForModal = (
+  value: { mode?: BlockConnectionMode; mask?: Partial<Record<(typeof BLOCK_FACES)[number], boolean>> } | undefined
+): { mode: BlockConnectionMode; mask: BlockConnectionMask } => {
+  // Modal state mirrors inspector behavior: explicit mode plus full face mask.
+  const mask = createConnectionMask();
+  if (value?.mask) {
+    BLOCK_FACES.forEach((face) => {
+      mask[face] = value.mask?.[face] === true;
+    });
+  }
+
+  return {
+    mode: value?.mode === "manual" ? "manual" : "auto",
+    mask,
+  };
 };
 
 const SceneTreeView = () => {
@@ -94,13 +171,22 @@ const SceneTreeView = () => {
   const addBlock = useBlocksStore((s) => s.addBlock);
   const removeBlock = useBlocksStore((s) => s.removeBlock);
   const renameBlock = useBlocksStore((s) => s.renameBlock);
+  const setBlockConnections = useBlocksStore((s) => s.setBlockConnections);
+  const moveSceneNode = useBlocksStore((s) => s.moveSceneNode);
   const selectBlock = useBlocksStore((s) => s.selectBlock);
+  const selectSceneNode = useBlocksStore((s) => s.selectSceneNode);
   const typeDefinitions = useBlockTypesStore((s) => s.definitions);
   const getTypeDefinition = useBlockTypesStore((s) => s.getDefinition);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [addObjectModal, setAddObjectModal] = useState<AddObjectModalState | null>(null);
+  const [editConnectionsModal, setEditConnectionsModal] = useState<EditConnectionsModalState | null>(null);
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<{
+    targetId: string;
+    position: SceneTreeDropPosition;
+  } | null>(null);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -119,8 +205,35 @@ const SceneTreeView = () => {
     [blocks]
   );
 
+  const filteredVisibleTypeDefinitions = useMemo(() => {
+    const filterText = addObjectModal?.typeFilter ?? "";
+    return filterTypeDefinitions(visibleTypeDefinitions, filterText);
+  }, [visibleTypeDefinitions, addObjectModal?.typeFilter]);
+
+  const groupedTypeOptions = useMemo(() => {
+    const grouped = new Map<string, typeof filteredVisibleTypeDefinitions>();
+
+    filteredVisibleTypeDefinitions.forEach((definition) => {
+      const label = getTypeGroupLabel(definition.id, definition.group);
+      const existing = grouped.get(label);
+      if (existing) {
+        existing.push(definition);
+      } else {
+        grouped.set(label, [definition]);
+      }
+    });
+
+    return Array.from(grouped.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([label, options]) => ({
+        label,
+        options: options.sort((a, b) => a.displayName.localeCompare(b.displayName)),
+      }));
+  }, [filteredVisibleTypeDefinitions]);
+
   const handleOpenContextMenu = (menu: ContextMenuState) => {
     setEditing(null);
+    selectSceneNode(menu.targetId);
     setContextMenu(menu);
   };
 
@@ -140,6 +253,11 @@ const SceneTreeView = () => {
     const onEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
 
+      if (editConnectionsModal) {
+        setEditConnectionsModal(null);
+        return;
+      }
+
       if (addObjectModal) {
         setAddObjectModal(null);
         return;
@@ -157,11 +275,24 @@ const SceneTreeView = () => {
 
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
-  }, [addObjectModal, contextMenu, editing]);
+  }, [addObjectModal, contextMenu, editConnectionsModal, editing]);
 
   const resolveTargetGroupId = (menu: ContextMenuState) => {
+    // Object menu actions target the parent group of the clicked block node.
     if (menu.type === "group") return menu.targetId;
     return findParentGroupId(sceneTree, menu.targetId) ?? "root";
+  };
+
+  const resolveObjectBlockFromContext = (menu: ContextMenuState | null) => {
+    if (!menu || menu.type !== "object") return null;
+
+    const node = findNodeById(sceneTree, menu.targetId);
+    if (!node || node.type !== "block") return null;
+
+    const block = blocks.find((entry) => entry.id === node.blockId);
+    if (!block) return null;
+
+    return block;
   };
 
   const startCreateGroup = () => {
@@ -259,11 +390,32 @@ const SceneTreeView = () => {
     setAddObjectModal({
       targetGroupId,
       type: blockTypeOptions[0] ?? "unknown_block",
+      typeFilter: "",
       name: defaultName,
       position: defaultPosition,
       error: null,
     });
 
+    setContextMenu(null);
+  };
+
+  const openEditConnectionsModal = () => {
+    const block = resolveObjectBlockFromContext(contextMenu);
+    if (!block) return;
+
+    const definition = getTypeDefinition(block.type);
+    if (definition.renderMode !== "conduit") {
+      setContextMenu(null);
+      return;
+    }
+
+    const normalized = normalizeConnectionsForModal(block.connections);
+    setEditConnectionsModal({
+      blockId: block.id,
+      blockName: block.name?.trim() || block.id,
+      mode: normalized.mode,
+      mask: normalized.mask,
+    });
     setContextMenu(null);
   };
 
@@ -310,6 +462,127 @@ const SceneTreeView = () => {
     });
   };
 
+  const confirmEditConnections = () => {
+    if (!editConnectionsModal) return;
+
+    setBlockConnections(editConnectionsModal.blockId, {
+      mode: editConnectionsModal.mode,
+      mask: editConnectionsModal.mask,
+    });
+    setEditConnectionsModal(null);
+  };
+
+  const contextObjectBlock = resolveObjectBlockFromContext(contextMenu);
+  const canEditConnections = Boolean(
+    contextObjectBlock &&
+      getTypeDefinition(contextObjectBlock.type).renderMode === "conduit"
+  );
+
+  const findChildIndex = (groupId: string, childId: string) => {
+    const groupNode = findNodeById(sceneTree, groupId);
+    if (!groupNode || groupNode.type !== "group") return -1;
+    return groupNode.children.findIndex((child) => child.id === childId);
+  };
+
+  const resolveDropTarget = (
+    targetId: string,
+    position: SceneTreeDropPosition
+  ): { groupId: string; index?: number } | null => {
+    const targetNode = findNodeById(sceneTree, targetId);
+    if (!targetNode) return null;
+
+    if (targetNode.type === "group") {
+      // Dropping "inside" a group appends to that group's children.
+      if (position === "inside") {
+        return { groupId: targetId };
+      }
+
+      const parentGroupId = findParentGroupId(sceneTree, targetId);
+      if (!parentGroupId) return null;
+      const targetIndex = findChildIndex(parentGroupId, targetId);
+      if (targetIndex < 0) return null;
+
+      return {
+        groupId: parentGroupId,
+        index: position === "before" ? targetIndex : targetIndex + 1,
+      };
+    }
+
+    const parentGroupId = findParentGroupId(sceneTree, targetId);
+    if (!parentGroupId) return null;
+    const targetIndex = findChildIndex(parentGroupId, targetId);
+    if (targetIndex < 0) return null;
+
+    return {
+      groupId: parentGroupId,
+      index: position === "before" ? targetIndex : targetIndex + 1,
+    };
+  };
+
+  const clearDragState = () => {
+    setDraggingNodeId(null);
+    setDragOver(null);
+  };
+
+  const handleTreeDragStart = (nodeId: string) => {
+    setDraggingNodeId(nodeId);
+    setDragOver(null);
+  };
+
+  const handleTreeDragOver = (
+    event: ReactDragEvent,
+    targetId: string,
+    position: SceneTreeDropPosition
+  ) => {
+    const sourceId =
+      event.dataTransfer.getData("text/x-scene-node-id") || draggingNodeId;
+    if (!sourceId) return;
+
+    const target = resolveDropTarget(targetId, position);
+    if (!target) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+
+    if (sourceId === targetId && position === "inside") {
+      setDragOver(null);
+      return;
+    }
+
+    setDragOver({
+      targetId,
+      position,
+    });
+  };
+
+  const handleTreeDrop = (
+    event: ReactDragEvent,
+    targetId: string,
+    position: SceneTreeDropPosition
+  ) => {
+    const sourceId =
+      event.dataTransfer.getData("text/x-scene-node-id") || draggingNodeId;
+    event.preventDefault();
+
+    if (!sourceId) {
+      clearDragState();
+      return;
+    }
+
+    const target = resolveDropTarget(targetId, position);
+    if (!target) {
+      clearDragState();
+      return;
+    }
+
+    const moved = moveSceneNode(sourceId, target.groupId, target.index);
+    if (moved) {
+      selectSceneNode(sourceId);
+    }
+
+    clearDragState();
+  };
+
   const isRootTarget =
     contextMenu?.type === "group" && contextMenu.targetId === "root";
 
@@ -328,6 +601,12 @@ const SceneTreeView = () => {
         }
         onConfirmEditing={confirmEditing}
         onCancelEditing={() => setEditing(null)}
+        draggingNodeId={draggingNodeId}
+        dragOver={dragOver}
+        onTreeDragStart={handleTreeDragStart}
+        onTreeDragOver={handleTreeDragOver}
+        onTreeDrop={handleTreeDrop}
+        onTreeDragEnd={clearDragState}
       />
 
       {contextMenu && (
@@ -344,6 +623,13 @@ const SceneTreeView = () => {
           </button>
           <button className="context-item" onClick={openAddObjectModal}>
             Add Object
+          </button>
+          <button
+            className="context-item"
+            onClick={openEditConnectionsModal}
+            disabled={!canEditConnections}
+          >
+            Edit Connections
           </button>
           <button
             className="context-item"
@@ -388,9 +674,42 @@ const SceneTreeView = () => {
             </div>
 
             <div className="modal-field">
+              <label>Type Filter</label>
+              <input
+                value={addObjectModal.typeFilter}
+                onChange={(e) =>
+                  setAddObjectModal((current) => {
+                    if (!current) return null;
+
+                    const nextFilter = e.target.value;
+                    const filtered = filterTypeDefinitions(
+                      visibleTypeDefinitions,
+                      nextFilter
+                    );
+                    const nextType = filtered.some((definition) => definition.id === current.type)
+                      ? current.type
+                      : (filtered[0]?.id ?? current.type);
+
+                    return {
+                      ...current,
+                      typeFilter: nextFilter,
+                      type: nextType,
+                      error: null,
+                    };
+                  })
+                }
+                placeholder="Search by name, id or group"
+              />
+            </div>
+
+            <div className="modal-field">
               <label>Type</label>
               <select
                 value={addObjectModal.type}
+                disabled={
+                  visibleTypeDefinitions.length > 0 &&
+                  filteredVisibleTypeDefinitions.length === 0
+                }
                 onChange={(e) =>
                   setAddObjectModal((current) =>
                     current
@@ -399,16 +718,28 @@ const SceneTreeView = () => {
                   )
                 }
               >
-                {visibleTypeDefinitions.length > 0 ? (
-                  visibleTypeDefinitions.map((definition) => (
-                    <option key={definition.id} value={definition.id}>
-                      {definition.displayName}
-                    </option>
+                {groupedTypeOptions.length > 0 ? (
+                  groupedTypeOptions.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.options.map((definition) => (
+                        <option key={definition.id} value={definition.id}>
+                          {definition.displayName}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))
                 ) : (
-                  <option value="unknown_block">
-                    {getTypeDefinition("unknown_block").displayName}
-                  </option>
+                  <>
+                    {visibleTypeDefinitions.length === 0 ? (
+                      <option value="unknown_block">
+                        {getTypeDefinition("unknown_block").displayName}
+                      </option>
+                    ) : (
+                      <option value={addObjectModal.type}>
+                        No type matches current filter
+                      </option>
+                    )}
+                  </>
                 )}
               </select>
             </div>
@@ -442,6 +773,80 @@ const SceneTreeView = () => {
               <button onClick={() => setAddObjectModal(null)}>Cancel</button>
               <button className="primary" onClick={confirmAddObject}>
                 Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editConnectionsModal && (
+        <div className="modal-backdrop" onMouseDown={() => setEditConnectionsModal(null)}>
+          <div
+            className="modal-card connections-modal"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <h3>Edit Connections</h3>
+            <p className="connections-modal-summary">{editConnectionsModal.blockName}</p>
+
+            <div className="modal-field">
+              <label>Mode</label>
+              <div className="connections-mode-toggle">
+                <button
+                  className={editConnectionsModal.mode === "auto" ? "active" : ""}
+                  onClick={() =>
+                    setEditConnectionsModal((current) =>
+                      current ? { ...current, mode: "auto" } : current
+                    )
+                  }
+                >
+                  Auto
+                </button>
+                <button
+                  className={editConnectionsModal.mode === "manual" ? "active" : ""}
+                  onClick={() =>
+                    setEditConnectionsModal((current) =>
+                      current ? { ...current, mode: "manual" } : current
+                    )
+                  }
+                >
+                  Manual
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-field">
+              <label>Directions</label>
+              <div className="connections-grid">
+                {BLOCK_FACES.map((direction) => (
+                  <label key={direction} className="connections-direction">
+                    <input
+                      type="checkbox"
+                      checked={editConnectionsModal.mask[direction]}
+                      disabled={editConnectionsModal.mode !== "manual"}
+                      onChange={(event) =>
+                        setEditConnectionsModal((current) =>
+                          current
+                            ? {
+                                ...current,
+                                mask: {
+                                  ...current.mask,
+                                  [direction]: event.target.checked,
+                                },
+                              }
+                            : current
+                        )
+                      }
+                    />
+                    <span>{connectionDirectionLabels[direction]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button onClick={() => setEditConnectionsModal(null)}>Cancel</button>
+              <button className="primary" onClick={confirmEditConnections}>
+                Apply
               </button>
             </div>
           </div>

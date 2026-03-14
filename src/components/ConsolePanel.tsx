@@ -27,6 +27,7 @@ const ConsolePanel = () => {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    // Follow the newest log entry automatically during imports and edits.
     el.scrollTop = el.scrollHeight;
   }, [entries]);
 

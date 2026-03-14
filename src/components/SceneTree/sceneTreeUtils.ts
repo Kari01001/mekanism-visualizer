@@ -38,6 +38,7 @@ export function insertNode(
   index?: number
 ): SceneGroupNode {
   if (root.id === targetGroupId) {
+    // Clone before editing so tree updates stay immutable.
     const children = [...root.children];
     if (index === undefined) {
       children.push(nodeToInsert);
@@ -65,6 +66,7 @@ export function removeNodeById(
   return {
     ...root,
     children: root.children
+      // Remove at the current level, then recurse into nested groups.
       .filter((c) => c.id !== nodeId)
       .map((c) =>
         c.type === "group" ? removeNodeById(c, nodeId) : c
@@ -99,6 +101,7 @@ export function collectBlockIds(node: SceneTreeNode): Set<string> {
   const ids = new Set<string>();
 
   node.children.forEach((child) => {
+    // Group selection works on the transitive set of descendant blocks.
     collectBlockIds(child).forEach((id) => ids.add(id));
   });
 

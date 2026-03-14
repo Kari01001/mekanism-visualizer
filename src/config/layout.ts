@@ -1,4 +1,5 @@
 export const LAYOUT_LIMITS = {
+  // Shared fallback limits for legacy/simple panel helpers.
   leftPanel: {
     min: 180,
     max: 500,

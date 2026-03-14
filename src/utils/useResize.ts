@@ -13,6 +13,7 @@ export const createHorizontalResize =
   const startX = e.clientX;
   const startWidth = currentValue;
 
+  // Disable text selection while dragging resize handles.
   document.body.style.userSelect = "none";
 
   const onMove = (ev: MouseEvent) => {
@@ -46,6 +47,7 @@ export const createVerticalResize =
   const startY = e.clientY;
   const startHeight = currentValue;
 
+  // Disable text selection while dragging resize handles.
   document.body.style.userSelect = "none";
 
   const onMove = (ev: MouseEvent) => {
