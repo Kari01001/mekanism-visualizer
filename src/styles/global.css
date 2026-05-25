@@ -817,10 +817,18 @@ input[type="number"].no-number-arrows {
   border: 1px solid #2f2f2f;
   background: #151515;
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.assets-breadcrumb-trail {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px;
+  min-width: 0;
 }
 
 .assets-breadcrumb-segment {
@@ -856,6 +864,33 @@ input[type="number"].no-number-arrows {
   font-size: 11px;
 }
 
+.assets-view-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.assets-view-control-button {
+  border: 1px solid #33404a;
+  background: #1d2429;
+  color: #d4e4ef;
+  font-size: 11px;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 7px;
+  cursor: pointer;
+}
+
+.assets-view-control-button:hover {
+  background: #27323a;
+  border-color: #48657b;
+}
+
+.assets-view-control-label {
+  min-width: 52px;
+}
+
 .assets-entry-grid {
   border: 1px solid #2f2f2f;
   background: #151515;
@@ -863,11 +898,11 @@ input[type="number"].no-number-arrows {
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 8px;
-  padding: 10px;
-  align-content: start;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: clamp(6px, calc(var(--assets-tile-size, 180px) / 26), 10px);
+  padding: clamp(8px, calc(var(--assets-tile-size, 180px) / 18), 12px);
 }
 
 .assets-folder-tile {
@@ -875,14 +910,17 @@ input[type="number"].no-number-arrows {
   background: #1c1c1c;
   color: #d6d6d6;
   text-align: center;
-  font-size: 12px;
-  padding: 8px 6px;
+  font-size: clamp(11px, calc(var(--assets-tile-size, 180px) / 15), 12px);
+  padding: clamp(6px, calc(var(--assets-tile-size, 180px) / 28), 8px)
+    clamp(5px, calc(var(--assets-tile-size, 180px) / 30), 6px);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  min-height: 112px;
+  gap: clamp(4px, calc(var(--assets-tile-size, 180px) / 36), 6px);
+  min-height: clamp(82px, calc(var(--assets-tile-size, 180px) * 0.62), 112px);
+  flex: 0 0 min(100%, var(--assets-tile-size, 180px));
+  width: min(100%, var(--assets-tile-size, 180px));
 }
 
 .assets-folder-tile:hover {
@@ -903,8 +941,8 @@ input[type="number"].no-number-arrows {
 }
 
 .assets-folder-icon {
-  width: 54px;
-  height: 38px;
+  width: clamp(38px, calc(var(--assets-tile-size, 180px) * 0.3), 54px);
+  height: clamp(28px, calc(var(--assets-tile-size, 180px) * 0.21), 38px);
   background: linear-gradient(180deg, #ffd570 0%, #f2b74e 100%);
   border: 1px solid #a07423;
   border-radius: 6px;
@@ -915,10 +953,10 @@ input[type="number"].no-number-arrows {
 .assets-folder-icon::before {
   content: "";
   position: absolute;
-  top: -7px;
-  left: 7px;
-  width: 20px;
-  height: 8px;
+  top: clamp(-7px, calc(var(--assets-tile-size, 180px) * -0.04), -5px);
+  left: clamp(5px, calc(var(--assets-tile-size, 180px) * 0.04), 7px);
+  width: clamp(14px, calc(var(--assets-tile-size, 180px) * 0.11), 20px);
+  height: clamp(6px, calc(var(--assets-tile-size, 180px) * 0.045), 8px);
   background: linear-gradient(180deg, #ffe19b 0%, #f4c96a 100%);
   border: 1px solid #a07423;
   border-bottom: 0;
@@ -932,7 +970,7 @@ input[type="number"].no-number-arrows {
 
 .assets-folder-tile-name {
   color: #e4e4e4;
-  font-size: 12px;
+  font-size: clamp(11px, calc(var(--assets-tile-size, 180px) / 15), 12px);
   line-height: 1.25;
   max-width: 100%;
   word-break: break-word;
@@ -940,7 +978,7 @@ input[type="number"].no-number-arrows {
 
 .assets-folder-tile-path {
   color: #8a8a8a;
-  font-size: 10px;
+  font-size: clamp(9px, calc(var(--assets-tile-size, 180px) / 18), 10px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -950,11 +988,13 @@ input[type="number"].no-number-arrows {
 .assets-type-tile {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: clamp(6px, calc(var(--assets-tile-size, 180px) / 26), 8px);
   background: #1c1c1c;
   border: 1px solid #2e2e2e;
-  padding: 8px;
-  min-height: 112px;
+  padding: clamp(6px, calc(var(--assets-tile-size, 180px) / 28), 8px);
+  min-height: clamp(82px, calc(var(--assets-tile-size, 180px) * 0.62), 112px);
+  flex: 0 0 min(100%, var(--assets-tile-size, 180px));
+  width: min(100%, var(--assets-tile-size, 180px));
 }
 
 .assets-type-tile:hover {
@@ -1017,14 +1057,14 @@ input[type="number"].no-number-arrows {
 .block-type-row-main {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: clamp(6px, calc(var(--assets-tile-size, 180px) / 26), 8px);
   min-width: 0;
 }
 
 .block-type-row-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: clamp(4px, calc(var(--assets-tile-size, 180px) / 36), 6px);
   margin-top: auto;
 }
 
@@ -1032,8 +1072,9 @@ input[type="number"].no-number-arrows {
   background: #232323;
   border: 1px solid #3b3b3b;
   color: #ddd;
-  font-size: 11px;
-  padding: 4px 8px;
+  font-size: clamp(10px, calc(var(--assets-tile-size, 180px) / 18), 11px);
+  padding: clamp(3px, calc(var(--assets-tile-size, 180px) / 45), 4px)
+    clamp(6px, calc(var(--assets-tile-size, 180px) / 22), 8px);
   cursor: pointer;
   flex: 1 1 auto;
 }
@@ -1043,8 +1084,8 @@ input[type="number"].no-number-arrows {
 }
 
 .block-type-swatch {
-  width: 34px;
-  height: 34px;
+  width: clamp(24px, calc(var(--assets-tile-size, 180px) * 0.19), 34px);
+  height: clamp(24px, calc(var(--assets-tile-size, 180px) * 0.19), 34px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   flex-shrink: 0;
 }
@@ -1058,14 +1099,14 @@ input[type="number"].no-number-arrows {
 
 .block-type-name {
   color: #ddd;
-  font-size: 12px;
+  font-size: clamp(11px, calc(var(--assets-tile-size, 180px) / 15), 12px);
   line-height: 1.2;
   word-break: break-word;
 }
 
 .block-type-id {
   color: #8f8f8f;
-  font-size: 11px;
+  font-size: clamp(9px, calc(var(--assets-tile-size, 180px) / 17), 11px);
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1093,7 +1134,7 @@ input[type="number"].no-number-arrows {
 .assets-empty {
   color: #7f7f7f;
   font-style: italic;
-  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .context-menu {

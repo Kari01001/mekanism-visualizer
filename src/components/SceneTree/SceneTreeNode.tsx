@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent as ReactDragEvent } from "react";
+import { useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useBlocksStore } from "../../state/useBlocksStore";
 import type { SceneTreeNode as SceneTreeNodeType } from "../../models/sceneTree";
 
@@ -20,14 +20,13 @@ interface Props {
   onEditingValueChange: (value: string) => void;
   onConfirmEditing: () => void;
   onCancelEditing: () => void;
+  onTreePointerDown: (event: ReactMouseEvent, nodeId: string) => void;
+  shouldSuppressTreeClick: () => boolean;
   draggingNodeId: string | null;
   dragOver: {
     targetId: string;
     position: SceneTreeDropPosition;
   } | null;
-  onTreeDragStart: (nodeId: string) => void;
-  onTreeDragOver: (event: ReactDragEvent, targetId: string, position: SceneTreeDropPosition) => void;
-  onTreeDrop: (event: ReactDragEvent, targetId: string, position: SceneTreeDropPosition) => void;
   onTreeDragEnd: () => void;
 }
 
@@ -42,11 +41,10 @@ const SceneTreeNode = ({
   onEditingValueChange,
   onConfirmEditing,
   onCancelEditing,
+  onTreePointerDown,
+  shouldSuppressTreeClick,
   draggingNodeId,
   dragOver,
-  onTreeDragStart,
-  onTreeDragOver,
-  onTreeDrop,
   onTreeDragEnd,
 }: Props) => {
   const selectSceneNode = useBlocksStore((s) => s.selectSceneNode);
@@ -67,23 +65,6 @@ const SceneTreeNode = ({
   const isDragOverTarget = dragOver?.targetId === node.id;
   const dropClass = isDragOverTarget ? `drag-over-${dragOver.position}` : "";
   const isDragging = draggingNodeId === node.id;
-
-  const resolveDropPosition = (event: ReactDragEvent): SceneTreeDropPosition => {
-    const currentTarget = event.currentTarget as HTMLDivElement;
-    const rect = currentTarget.getBoundingClientRect();
-    const relativeY = event.clientY - rect.top;
-    const ratio = rect.height > 0 ? relativeY / rect.height : 0.5;
-
-    if (node.type === "group") {
-      // Groups accept drops before, after, or inside; blocks only before/after.
-      if (isRoot) return "inside";
-      if (ratio < 0.25) return "before";
-      if (ratio > 0.75) return "after";
-      return "inside";
-    }
-
-    return ratio < 0.5 ? "before" : "after";
-  };
 
   const renderPrefix = () =>
     ancestorLines.map((hasLine, i) => (
@@ -139,28 +120,16 @@ const SceneTreeNode = ({
           ]
             .filter(Boolean)
             .join(" ")}
-          draggable={!isRoot}
-          onDragStart={(event) => {
-            if (isRoot || isEditing) {
-              event.preventDefault();
-              return;
-            }
-
-            event.dataTransfer.setData("text/x-scene-node-id", node.id);
-            event.dataTransfer.effectAllowed = "move";
-            onTreeDragStart(node.id);
-          }}
-          onDragOver={(event) => {
-            if (isEditing) return;
-            onTreeDragOver(event, node.id, resolveDropPosition(event));
-          }}
-          onDrop={(event) => {
-            if (isEditing) return;
-            onTreeDrop(event, node.id, resolveDropPosition(event));
+          data-scene-tree-node-id={node.id}
+          data-scene-tree-node-type="group"
+          data-scene-tree-root={isRoot ? "true" : undefined}
+          onMouseDown={(event) => {
+            if (isRoot || isEditing) return;
+            onTreePointerDown(event, node.id);
           }}
           onDragEnd={() => onTreeDragEnd()}
           onClick={() => {
-            if (isEditing) return;
+            if (isEditing || shouldSuppressTreeClick()) return;
             selectSceneNode(node.id);
           }}
           onContextMenu={(e) => {
@@ -215,11 +184,10 @@ const SceneTreeNode = ({
                 onEditingValueChange={onEditingValueChange}
                 onConfirmEditing={onConfirmEditing}
                 onCancelEditing={onCancelEditing}
+                onTreePointerDown={onTreePointerDown}
+                shouldSuppressTreeClick={shouldSuppressTreeClick}
                 draggingNodeId={draggingNodeId}
                 dragOver={dragOver}
-                onTreeDragStart={onTreeDragStart}
-                onTreeDragOver={onTreeDragOver}
-                onTreeDrop={onTreeDrop}
                 onTreeDragEnd={onTreeDragEnd}
               />
             );
@@ -238,22 +206,16 @@ const SceneTreeNode = ({
       ]
         .filter(Boolean)
         .join(" ")}
-      draggable={!isEditing}
-      onDragStart={(event) => {
-        if (isEditing) {
-          event.preventDefault();
-          return;
-        }
-
-        event.dataTransfer.setData("text/x-scene-node-id", node.id);
-        event.dataTransfer.effectAllowed = "move";
-        onTreeDragStart(node.id);
+      data-scene-tree-node-id={node.id}
+      data-scene-tree-node-type="block"
+      onMouseDown={(event) => {
+        if (isEditing) return;
+        onTreePointerDown(event, node.id);
       }}
-      onDragOver={(event) => onTreeDragOver(event, node.id, resolveDropPosition(event))}
-      onDrop={(event) => onTreeDrop(event, node.id, resolveDropPosition(event))}
       onDragEnd={() => onTreeDragEnd()}
       onClick={(e) => {
         e.stopPropagation();
+        if (shouldSuppressTreeClick()) return;
         selectSceneNode(node.id);
       }}
       onContextMenu={(e) => {

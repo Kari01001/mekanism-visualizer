@@ -10,3 +10,7 @@ src-tauri/gen/
 *.log
 npm-debug.log*
 
+build-installer.bat
+build-web.bat
+package-lock.json
+package.json

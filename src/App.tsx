@@ -29,6 +29,11 @@ import { logError, logInfo, logWarn } from "./state/useConsoleStore";
 import { useBlocksStore } from "./state/useBlocksStore";
 import { useProjectStore } from "./state/useProjectStore";
 import { collectBlockIds, findNodeById } from "./components/SceneTree/sceneTreeUtils";
+import {
+  getFileNameFromPath,
+  isDesktopRuntime,
+  saveTextFile,
+} from "./utils/fileSave";
 
 const FILE_SOURCE = "FileMenu";
 const EDIT_SOURCE = "EditMenu";
@@ -46,18 +51,6 @@ const sanitizeFileStem = (value: string) => {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase();
-};
-
-const downloadJson = (fileName: string, content: string) => {
-  const blob = new Blob([content], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = fileName;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
 };
 
 const toPositionKey = (position: { x: number; y: number; z: number }) =>
@@ -1895,8 +1888,8 @@ const App = () => {
     return window.confirm("You have unsaved changes. Continue anyway?");
   }, [dirty]);
 
-  const saveProjectToDownload = useCallback(
-    (targetFileName: string, markAsSaved: boolean) => {
+  const saveProjectToFile = useCallback(
+    async (targetPath: string, markAsSaved: boolean, preferDialog = false) => {
       const now = new Date().toISOString();
       const nextMeta = {
         ...projectMeta,
@@ -1911,7 +1904,26 @@ const App = () => {
       });
 
       const serialized = JSON.stringify(payload, null, 2);
-      downloadJson(targetFileName, serialized);
+      const savedFile = await saveTextFile({
+        content: serialized,
+        defaultPath: targetPath,
+        title: markAsSaved ? "Save Project" : "Export Project Snapshot",
+        filters: [
+          {
+            name: "Project JSON",
+            extensions: ["json"],
+          },
+        ],
+        mimeType: "application/json",
+        preferDialog,
+      });
+
+      if (!savedFile.saved) {
+        return false;
+      }
+
+      const persistedPath = savedFile.path ?? targetPath;
+      const persistedFileName = getFileNameFromPath(persistedPath) ?? targetPath;
 
       if (markAsSaved) {
         // Saved snapshot becomes the new dirty-state baseline.
@@ -1922,11 +1934,13 @@ const App = () => {
           embeddedBlockTypes: visibleBlockTypes,
         });
 
-        markSaved(nextMeta, targetFileName, snapshot);
-        logInfo(FILE_SOURCE, `Saved project to "${targetFileName}".`);
+        markSaved(nextMeta, persistedPath, snapshot);
+        logInfo(FILE_SOURCE, `Saved project to "${persistedPath}".`);
       } else {
-        logInfo(FILE_SOURCE, `Exported project to "${targetFileName}".`);
+        logInfo(FILE_SOURCE, `Exported project to "${persistedFileName}".`);
       }
+
+      return true;
     },
     [projectMeta, sceneTree, blocks, visibleBlockTypes, markSaved]
   );
@@ -2028,34 +2042,50 @@ const App = () => {
   );
 
   const defaultSaveFileName = useMemo(() => {
-    if (projectFileName) return ensureJsonExtension(projectFileName);
+    const resolvedProjectFileName = getFileNameFromPath(projectFileName);
+    if (resolvedProjectFileName) return ensureJsonExtension(resolvedProjectFileName);
     return ensureJsonExtension(`${sanitizeFileStem(projectMeta.name)}.json`);
   }, [projectFileName, projectMeta.name]);
 
-  const handleSaveAs = useCallback(() => {
-    const promptValue = window.prompt("Save project as:", defaultSaveFileName);
-    if (!promptValue) return;
+  const handleSaveAs = useCallback(async () => {
+    const promptValue = !isDesktopRuntime()
+      ? window.prompt("Save project as:", defaultSaveFileName)
+      : null;
+    const targetPath = ensureJsonExtension(
+      promptValue || projectFileName || defaultSaveFileName
+    );
 
-    const targetFileName = ensureJsonExtension(promptValue);
-    saveProjectToDownload(targetFileName, true);
-  }, [defaultSaveFileName, saveProjectToDownload]);
-
-  const handleSave = useCallback(() => {
-    if (projectFileName) {
-      saveProjectToDownload(ensureJsonExtension(projectFileName), true);
+    if (!isDesktopRuntime() && !promptValue) {
       return;
     }
 
-    handleSaveAs();
-  }, [handleSaveAs, projectFileName, saveProjectToDownload]);
+    try {
+      await saveProjectToFile(targetPath, true, true);
+    } catch {
+      logError(FILE_SOURCE, "Failed to save project.");
+    }
+  }, [defaultSaveFileName, projectFileName, saveProjectToFile]);
 
-  const handleExport = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    const targetPath = ensureJsonExtension(projectFileName ?? defaultSaveFileName);
+    try {
+      await saveProjectToFile(targetPath, true);
+    } catch {
+      logError(FILE_SOURCE, "Failed to save project.");
+    }
+  }, [defaultSaveFileName, projectFileName, saveProjectToFile]);
+
+  const handleExport = useCallback(async () => {
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
     const targetFileName = ensureJsonExtension(
       `${sanitizeFileStem(projectMeta.name)}-export-${timestamp}.json`
     );
-    saveProjectToDownload(targetFileName, false);
-  }, [projectMeta.name, saveProjectToDownload]);
+    try {
+      await saveProjectToFile(targetFileName, false, true);
+    } catch {
+      logError(FILE_SOURCE, "Failed to export project snapshot.");
+    }
+  }, [projectMeta.name, saveProjectToFile]);
 
   const handleImportAssets = useCallback(() => {
     setUtilityTab("assets");

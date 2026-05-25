@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ChangeEvent,
   type DragEvent as ReactDragEvent,
   type MouseEvent as ReactMouseEvent,
@@ -24,6 +25,7 @@ import {
   ASSETS_COMMAND_EVENT,
   type AssetsCommandEventDetail,
 } from "../assets/assetsCommands";
+import { saveTextFile } from "../utils/fileSave";
 
 const SOURCE = "BlockTypes";
 type ImportKind = "json" | "png" | "jar" | "unknown";
@@ -76,6 +78,12 @@ const TYPE_TEXTURE_SLOT_LABELS: Record<TypeTextureSlot, string> = {
   front: "Front",
   back: "Back",
 };
+const ASSETS_TILE_SIZE_STORAGE_KEY = "mekanism-visualizer.assets.tile-scale.v2";
+const DEFAULT_ASSETS_TILE_SIZE = 180;
+const DEFAULT_ASSETS_TILE_SCALE_PERCENT = 100;
+const MIN_ASSETS_TILE_SCALE_PERCENT = 50;
+const MAX_ASSETS_TILE_SCALE_PERCENT = 200;
+const ASSETS_TILE_SCALE_STEP_PERCENT = 10;
 const CONNECTION_PROFILE_PATTERNS: Array<{ connectTag: string; tokens: string[] }> = [
   { connectTag: "fluid", tokens: ["mechanical_pipe", "pipe", "fluid"] },
   { connectTag: "gas", tokens: ["pressurized_tube", "tube", "gas"] },
@@ -1058,7 +1066,8 @@ interface BlockTypeManagerProps {
 
 type AssetsContextMenuTarget =
   | { kind: "browser" }
-  | { kind: "folder"; folderPath: string };
+  | { kind: "folder"; folderPath: string }
+  | { kind: "type"; typeId: string };
 
 const BlockTypeManager = ({
   initialFolder = DEFAULT_ASSET_TEXTURES_FOLDER,
@@ -1070,6 +1079,19 @@ const BlockTypeManager = ({
   const [textureProfileEditor, setTextureProfileEditor] = useState<TextureProfileEditorState | null>(null);
   const [typeEditor, setTypeEditor] = useState<TypeEditorState | null>(null);
   const [selectedFolder, setSelectedFolder] = useState(normalizeFolderPath(initialFolder));
+  const [assetsTileScalePercent, setAssetsTileScalePercent] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_ASSETS_TILE_SCALE_PERCENT;
+
+    const rawValue = window.localStorage.getItem(ASSETS_TILE_SIZE_STORAGE_KEY);
+    const parsedValue = rawValue ? Number.parseInt(rawValue, 10) : Number.NaN;
+
+    return Number.isFinite(parsedValue)
+      ? Math.min(
+          MAX_ASSETS_TILE_SCALE_PERCENT,
+          Math.max(MIN_ASSETS_TILE_SCALE_PERCENT, parsedValue)
+        )
+      : DEFAULT_ASSETS_TILE_SCALE_PERCENT;
+  });
   const [renameDrafts, setRenameDrafts] = useState<Record<string, string>>({});
   const [assetsContextMenu, setAssetsContextMenu] = useState<{
     x: number;
@@ -1160,6 +1182,37 @@ const BlockTypeManager = ({
     if (!textureProfileEditor) return [];
     return toTextureSourceOptions(textureProfileEditor.textures, textureProfileEditor.profile);
   }, [textureProfileEditor]);
+  const assetsTileSize = useMemo(
+    () => Math.round((DEFAULT_ASSETS_TILE_SIZE * assetsTileScalePercent) / 100),
+    [assetsTileScalePercent]
+  );
+  const assetsEntryGridStyle = useMemo(
+    () =>
+      ({
+        "--assets-tile-size": `${assetsTileSize}px`,
+      }) as CSSProperties,
+    [assetsTileSize]
+  );
+
+  const adjustAssetsTileScalePercent = useCallback((delta: number) => {
+    setAssetsTileScalePercent((current) =>
+      Math.min(
+        MAX_ASSETS_TILE_SCALE_PERCENT,
+        Math.max(MIN_ASSETS_TILE_SCALE_PERCENT, current + delta)
+      )
+    );
+  }, []);
+
+  const resetAssetsTileScalePercent = useCallback(() => {
+    setAssetsTileScalePercent(DEFAULT_ASSETS_TILE_SCALE_PERCENT);
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      ASSETS_TILE_SIZE_STORAGE_KEY,
+      String(assetsTileScalePercent)
+    );
+  }, [assetsTileScalePercent]);
 
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -1385,6 +1438,15 @@ const BlockTypeManager = ({
   }, []);
 
   const handleAssetsEntryGridWheelCapture = (event: ReactWheelEvent<HTMLDivElement>) => {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      adjustAssetsTileScalePercent(
+        event.deltaY > 0
+          ? -ASSETS_TILE_SCALE_STEP_PERCENT
+          : ASSETS_TILE_SCALE_STEP_PERCENT
+      );
+    }
+
     event.stopPropagation();
   };
 
@@ -1982,17 +2044,32 @@ const BlockTypeManager = ({
     }
   };
 
-  const handleExportClick = useCallback(() => {
-    const content = exportPackToString();
-    const blob = new Blob([content], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `block-types-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
+  const handleExportClick = useCallback(async () => {
+    const targetFileName = `block-types-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`;
+
+    try {
+      const savedFile = await saveTextFile({
+        content: exportPackToString(),
+        defaultPath: targetFileName,
+        title: "Export Block Types",
+        filters: [
+          {
+            name: "Block Type Pack",
+            extensions: ["json"],
+          },
+        ],
+        mimeType: "application/json",
+        preferDialog: true,
+      });
+
+      if (!savedFile.saved) {
+        return;
+      }
+
+      logInfo(SOURCE, `Exported block types to "${savedFile.path ?? targetFileName}".`);
+    } catch {
+      logError(SOURCE, "Failed to export block types.");
+    }
   }, [exportPackToString]);
 
   const closeAssetsContextMenu = () => {
@@ -2032,6 +2109,16 @@ const BlockTypeManager = ({
     openAssetsContextMenu(event, {
       kind: "folder",
       folderPath,
+    });
+  };
+
+  const handleTypeContextMenu = (
+    event: ReactMouseEvent<HTMLDivElement>,
+    typeId: string
+  ) => {
+    openAssetsContextMenu(event, {
+      kind: "type",
+      typeId,
     });
   };
 
@@ -2131,6 +2218,13 @@ const BlockTypeManager = ({
     assetsContextMenu?.target.kind === "folder"
       ? assetsContextMenu.target
       : null;
+  const typeContextTarget =
+    assetsContextMenu?.target.kind === "type"
+      ? assetsContextMenu.target
+      : null;
+  const typeContextDefinition = typeContextTarget
+    ? allVisibleDefinitions.find((definition) => definition.id === typeContextTarget.typeId) ?? null
+    : null;
   const customDraggingTextureSource = customDraggingDefinition
     ? resolvePrimaryTextureSource(customDraggingDefinition.textures)
     : undefined;
@@ -2168,29 +2262,63 @@ const BlockTypeManager = ({
 
         <div className="assets-browser-layout">
           <div className="assets-folder-breadcrumbs">
-            {folderBreadcrumbs.map((breadcrumb, index) => (
-              <span key={`breadcrumb:${breadcrumb.path}`} className="assets-breadcrumb-segment">
-                <button
-                  className={[
-                    "assets-breadcrumb-button",
-                    breadcrumb.path === effectiveSelectedFolder ? "active" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onClick={() => setSelectedFolder(breadcrumb.path)}
-                >
-                  {breadcrumb.label}
-                </button>
-                {index < folderBreadcrumbs.length - 1 && (
-                  <span className="assets-breadcrumb-separator">/</span>
-                )}
-              </span>
-            ))}
+            <div className="assets-breadcrumb-trail">
+              {folderBreadcrumbs.map((breadcrumb, index) => (
+                <span key={`breadcrumb:${breadcrumb.path}`} className="assets-breadcrumb-segment">
+                  <button
+                    className={[
+                      "assets-breadcrumb-button",
+                      breadcrumb.path === effectiveSelectedFolder ? "active" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={() => setSelectedFolder(breadcrumb.path)}
+                  >
+                    {breadcrumb.label}
+                  </button>
+                  {index < folderBreadcrumbs.length - 1 && (
+                    <span className="assets-breadcrumb-separator">/</span>
+                  )}
+                </span>
+              ))}
+            </div>
+
+            <div className="assets-view-controls">
+              <button
+                className="assets-view-control-button"
+                onClick={() =>
+                  adjustAssetsTileScalePercent(-ASSETS_TILE_SCALE_STEP_PERCENT)
+                }
+                title="Smaller tiles"
+                aria-label="Smaller tiles"
+              >
+                -
+              </button>
+              <button
+                className="assets-view-control-button assets-view-control-label"
+                onClick={resetAssetsTileScalePercent}
+                title="Reset tile size"
+                aria-label="Reset tile size"
+              >
+                {assetsTileScalePercent}%
+              </button>
+              <button
+                className="assets-view-control-button"
+                onClick={() =>
+                  adjustAssetsTileScalePercent(ASSETS_TILE_SCALE_STEP_PERCENT)
+                }
+                title="Larger tiles"
+                aria-label="Larger tiles"
+              >
+                +
+              </button>
+            </div>
           </div>
 
           <div
             className="assets-entry-grid"
             ref={assetsEntryGridRef}
+            style={assetsEntryGridStyle}
             onDragOver={handleAssetsEntryGridDragOver}
             onDragLeave={handleAssetsEntryGridDragLeave}
             onDrop={endAssetDragInteraction}
@@ -2276,6 +2404,7 @@ const BlockTypeManager = ({
                     .filter(Boolean)
                     .join(" ")}
                   onMouseDown={(event) => handleTypeTileMouseDown(event, definition.id)}
+                  onContextMenu={(event) => handleTypeContextMenu(event, definition.id)}
                 >
                   <div className="block-type-row-main">
                     <span
@@ -2325,34 +2454,6 @@ const BlockTypeManager = ({
                       <div className="block-type-id">{definition.id}</div>
                     </div>
                   </div>
-                  <div className="block-type-row-actions">
-                    <button
-                      className="block-type-edit-button"
-                      onClick={() => startRename(definition)}
-                    >
-                      Rename
-                    </button>
-                    <button
-                      className="block-type-edit-button"
-                      onClick={() => openTypeEditor(definition)}
-                    >
-                      Edit
-                    </button>
-                    {definition.renderMode === "conduit" && (
-                      <button
-                        className="block-type-edit-button"
-                        onClick={() => openTextureProfileEditor(definition)}
-                      >
-                        Conduit
-                      </button>
-                    )}
-                    <button
-                      className="block-type-edit-button danger"
-                      onClick={() => removeType(definition)}
-                    >
-                      Delete
-                    </button>
-                  </div>
                 </div>
               );
             })}
@@ -2398,76 +2499,121 @@ const BlockTypeManager = ({
             top: `${assetsContextMenu.y}px`,
           }}
         >
-          {folderContextTarget && (
+          {typeContextDefinition ? (
             <>
               <button
                 className="context-item"
                 onClick={() => {
                   closeAssetsContextMenu();
-                  setSelectedFolder(folderContextTarget.folderPath);
+                  startRename(typeContextDefinition);
                 }}
               >
-                Open Folder
+                Rename
               </button>
               <button
                 className="context-item"
                 onClick={() => {
                   closeAssetsContextMenu();
-                  handleCreateFolderAt(folderContextTarget.folderPath);
+                  openTypeEditor(typeContextDefinition);
                 }}
               >
-                New Folder Here
+                Edit
               </button>
-              <button
-                className="context-item"
-                disabled={!canModifyFolder(folderContextTarget.folderPath)}
-                onClick={() => {
-                  closeAssetsContextMenu();
-                  handleRenameFolderAt(folderContextTarget.folderPath);
-                }}
-              >
-                Rename Folder
-              </button>
+              {typeContextDefinition.renderMode === "conduit" && (
+                <button
+                  className="context-item"
+                  onClick={() => {
+                    closeAssetsContextMenu();
+                    openTextureProfileEditor(typeContextDefinition);
+                  }}
+                >
+                  Conduit
+                </button>
+              )}
               <button
                 className="context-item danger"
-                disabled={!canModifyFolder(folderContextTarget.folderPath)}
                 onClick={() => {
                   closeAssetsContextMenu();
-                  handleDeleteFolderAt(folderContextTarget.folderPath);
+                  removeType(typeContextDefinition);
                 }}
               >
-                Delete Folder
+                Delete
               </button>
-              <div className="context-separator" />
+            </>
+          ) : (
+            <>
+              {folderContextTarget && (
+                <>
+                  <button
+                    className="context-item"
+                    onClick={() => {
+                      closeAssetsContextMenu();
+                      setSelectedFolder(folderContextTarget.folderPath);
+                    }}
+                  >
+                    Open Folder
+                  </button>
+                  <button
+                    className="context-item"
+                    onClick={() => {
+                      closeAssetsContextMenu();
+                      handleCreateFolderAt(folderContextTarget.folderPath);
+                    }}
+                  >
+                    New Folder Here
+                  </button>
+                  <button
+                    className="context-item"
+                    disabled={!canModifyFolder(folderContextTarget.folderPath)}
+                    onClick={() => {
+                      closeAssetsContextMenu();
+                      handleRenameFolderAt(folderContextTarget.folderPath);
+                    }}
+                  >
+                    Rename Folder
+                  </button>
+                  <button
+                    className="context-item danger"
+                    disabled={!canModifyFolder(folderContextTarget.folderPath)}
+                    onClick={() => {
+                      closeAssetsContextMenu();
+                      handleDeleteFolderAt(folderContextTarget.folderPath);
+                    }}
+                  >
+                    Delete Folder
+                  </button>
+                  <div className="context-separator" />
+                </>
+              )}
+              <button
+                className="context-item"
+                onClick={() => {
+                  closeAssetsContextMenu();
+                  handleCreateCustomObject();
+                }}
+              >
+                New Custom Object
+              </button>
+              <button
+                className="context-item"
+                onClick={() => {
+                  closeAssetsContextMenu();
+                  handleImportClick();
+                }}
+              >
+                Import Types
+              </button>
+              <button
+                className="context-item"
+                onClick={() => {
+                  closeAssetsContextMenu();
+                  handleExportClick();
+                }}
+              >
+                Export Types
+              </button>
             </>
           )}
-          <button
-            className="context-item"
-            onClick={() => {
-              closeAssetsContextMenu();
-              handleCreateCustomObject();
-            }}
-          >
-            New Custom Object
-          </button>
-          <button
-            className="context-item"
-            onClick={() => {
-              closeAssetsContextMenu();
-              handleImportClick();
-            }}
-          >
-            Import Types
-          </button>
-          <button
-            className="context-item"
-            onClick={() => {
-              closeAssetsContextMenu();
-              handleExportClick();
-            }}
-          >
-            Export Types
-          </button>
         </div>
       )}
 

@@ -124,7 +124,12 @@ export default function initScene(
     preserveDrawingBuffer: true,
   });
   renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(mountEl.clientWidth, mountEl.clientHeight, false);
+  renderer.domElement.style.display = "block";
+  renderer.setSize(
+    Math.max(1, mountEl.clientWidth),
+    Math.max(1, mountEl.clientHeight),
+    true
+  );
   mountEl.appendChild(renderer.domElement);
 
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -849,9 +854,9 @@ export default function initScene(
       lastWidth = width;
       lastHeight = height;
 
-      camera.aspect = width / height;
+      camera.aspect = Math.max(1, width) / Math.max(1, height);
       camera.updateProjectionMatrix();
-      renderer.setSize(width, height, false);
+      renderer.setSize(Math.max(1, width), Math.max(1, height), true);
     }
 
     const currentRevision = useBlockTypesStore.getState().revision;

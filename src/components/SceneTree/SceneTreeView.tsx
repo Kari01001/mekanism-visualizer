@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
   BLOCK_FACES,
   createConnectionMask,
@@ -14,6 +14,7 @@ import {
   findNodeById,
   findParentGroupId,
 } from "./sceneTreeUtils";
+import { logInfo, logWarn } from "../../state/useConsoleStore";
 
 type ContextMenuState = {
   x: number;
@@ -189,6 +190,17 @@ const SceneTreeView = () => {
   } | null>(null);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const draggingNodeIdRef = useRef<string | null>(null);
+  const dragOverRef = useRef<{
+    targetId: string;
+    position: SceneTreeDropPosition;
+  } | null>(null);
+  const pendingPointerDragRef = useRef<{
+    nodeId: string;
+    startX: number;
+    startY: number;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
 
   const visibleTypeDefinitions = useMemo(
     () => typeDefinitions.filter((definition) => !definition.internal),
@@ -519,69 +531,180 @@ const SceneTreeView = () => {
     };
   };
 
+  const setDragOverState = (
+    nextValue: {
+      targetId: string;
+      position: SceneTreeDropPosition;
+    } | null
+  ) => {
+    dragOverRef.current = nextValue;
+    setDragOver(nextValue);
+  };
+
   const clearDragState = () => {
+    pendingPointerDragRef.current = null;
+    draggingNodeIdRef.current = null;
+    dragOverRef.current = null;
     setDraggingNodeId(null);
     setDragOver(null);
   };
 
-  const handleTreeDragStart = (nodeId: string) => {
-    setDraggingNodeId(nodeId);
-    setDragOver(null);
-  };
+  const resolvePointerDropPosition = (
+    targetType: "group" | "block",
+    isRootTarget: boolean,
+    rowRect: DOMRect,
+    pointerY: number
+  ): SceneTreeDropPosition => {
+    const relativeY = pointerY - rowRect.top;
+    const ratio = rowRect.height > 0 ? relativeY / rowRect.height : 0.5;
 
-  const handleTreeDragOver = (
-    event: ReactDragEvent,
-    targetId: string,
-    position: SceneTreeDropPosition
-  ) => {
-    const sourceId =
-      event.dataTransfer.getData("text/x-scene-node-id") || draggingNodeId;
-    if (!sourceId) return;
-
-    const target = resolveDropTarget(targetId, position);
-    if (!target) return;
-
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-
-    if (sourceId === targetId && position === "inside") {
-      setDragOver(null);
-      return;
+    if (targetType === "group") {
+      if (isRootTarget) return "inside";
+      if (ratio < 0.25) return "before";
+      if (ratio > 0.75) return "after";
+      return "inside";
     }
 
-    setDragOver({
+    return ratio < 0.5 ? "before" : "after";
+  };
+
+  const resolveDropFromPointer = (clientX: number, clientY: number) => {
+    const hoveredElement = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const rowElement = hoveredElement?.closest("[data-scene-tree-node-id]") as HTMLElement | null;
+    if (!rowElement) {
+      return null;
+    }
+
+    const targetId = rowElement.dataset.sceneTreeNodeId;
+    const targetType = rowElement.dataset.sceneTreeNodeType as "group" | "block" | undefined;
+    if (!targetId || !targetType) {
+      return null;
+    }
+
+    const position = resolvePointerDropPosition(
+      targetType,
+      rowElement.dataset.sceneTreeRoot === "true",
+      rowElement.getBoundingClientRect(),
+      clientY
+    );
+
+    return {
       targetId,
       position,
-    });
+      target: resolveDropTarget(targetId, position),
+    };
   };
 
-  const handleTreeDrop = (
-    event: ReactDragEvent,
-    targetId: string,
-    position: SceneTreeDropPosition
-  ) => {
-    const sourceId =
-      event.dataTransfer.getData("text/x-scene-node-id") || draggingNodeId;
-    event.preventDefault();
+  const handleTreePointerDown = (event: ReactMouseEvent, nodeId: string) => {
+    if (event.button !== 0) return;
 
-    if (!sourceId) {
-      clearDragState();
+    const targetElement = event.target as HTMLElement | null;
+    if (targetElement?.closest("button, input, select, textarea, a")) {
       return;
     }
 
-    const target = resolveDropTarget(targetId, position);
-    if (!target) {
-      clearDragState();
-      return;
-    }
-
-    const moved = moveSceneNode(sourceId, target.groupId, target.index);
-    if (moved) {
-      selectSceneNode(sourceId);
-    }
-
-    clearDragState();
+    pendingPointerDragRef.current = {
+      nodeId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
   };
+
+  const shouldSuppressTreeClick = () => {
+    if (!suppressClickRef.current) return false;
+    suppressClickRef.current = false;
+    return true;
+  };
+
+  useEffect(() => {
+    const handlePointerMove = (event: MouseEvent) => {
+      const pending = pendingPointerDragRef.current;
+      if (!pending) return;
+
+      const deltaX = event.clientX - pending.startX;
+      const deltaY = event.clientY - pending.startY;
+      const distanceSquared = deltaX * deltaX + deltaY * deltaY;
+      const isActive = draggingNodeIdRef.current !== null;
+
+      if (!isActive) {
+        // Delay drag activation until the pointer clearly moved away from a click.
+        if (distanceSquared < 16) return;
+
+        draggingNodeIdRef.current = pending.nodeId;
+        setDraggingNodeId(pending.nodeId);
+      }
+
+      event.preventDefault();
+
+      const resolvedDrop = resolveDropFromPointer(event.clientX, event.clientY);
+      if (
+        !resolvedDrop ||
+        !resolvedDrop.target ||
+        (draggingNodeIdRef.current === resolvedDrop.targetId &&
+          resolvedDrop.position === "inside")
+      ) {
+        setDragOverState(null);
+        return;
+      }
+
+      setDragOverState({
+        targetId: resolvedDrop.targetId,
+        position: resolvedDrop.position,
+      });
+    };
+
+    const handlePointerUp = (event: MouseEvent) => {
+      const pending = pendingPointerDragRef.current;
+      const sourceId = draggingNodeIdRef.current;
+      if (!pending && !sourceId) return;
+
+      if (sourceId) {
+        const resolvedDrop = resolveDropFromPointer(event.clientX, event.clientY);
+        if (!resolvedDrop || !resolvedDrop.target) {
+          logWarn("SceneTree", "Drop ignored because the pointer was released outside a valid scene tree target.");
+        } else {
+          const moved = moveSceneNode(
+            sourceId,
+            resolvedDrop.target.groupId,
+            resolvedDrop.target.index
+          );
+
+          if (moved) {
+            selectSceneNode(sourceId);
+            logInfo(
+              "SceneTree",
+              `Moved ${sourceId} into ${resolvedDrop.target.groupId}${
+                typeof resolvedDrop.target.index === "number"
+                  ? ` at index ${resolvedDrop.target.index}`
+                  : ""
+              }.`
+            );
+          } else {
+            logWarn(
+              "SceneTree",
+              `Move rejected for ${sourceId} into ${resolvedDrop.target.groupId}${
+                typeof resolvedDrop.target.index === "number"
+                  ? ` at index ${resolvedDrop.target.index}`
+                  : ""
+              }.`
+            );
+          }
+        }
+
+        suppressClickRef.current = true;
+      }
+
+      clearDragState();
+    };
+
+    window.addEventListener("mousemove", handlePointerMove);
+    window.addEventListener("mouseup", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handlePointerMove);
+      window.removeEventListener("mouseup", handlePointerUp);
+    };
+  }, [moveSceneNode, selectSceneNode, sceneTree]);
 
   const isRootTarget =
     contextMenu?.type === "group" && contextMenu.targetId === "root";
@@ -601,11 +724,10 @@ const SceneTreeView = () => {
         }
         onConfirmEditing={confirmEditing}
         onCancelEditing={() => setEditing(null)}
+        onTreePointerDown={handleTreePointerDown}
+        shouldSuppressTreeClick={shouldSuppressTreeClick}
         draggingNodeId={draggingNodeId}
         dragOver={dragOver}
-        onTreeDragStart={handleTreeDragStart}
-        onTreeDragOver={handleTreeDragOver}
-        onTreeDrop={handleTreeDrop}
         onTreeDragEnd={clearDragState}
       />
 
